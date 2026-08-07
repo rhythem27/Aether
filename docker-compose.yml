@@ -1,0 +1,106 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - NEO4J_URI=bolt://neo4j:7687
+      - REDIS_URL=redis://redis:6379
+      - LANGFUSE_HOST=http://langfuse:3000
+    env_file: .env
+    depends_on:
+      - qdrant
+      - neo4j
+      - redis
+      - postgres
+    volumes:
+      - ./backend:/app/backend
+    command: uvicorn backend.api.main:app --host 0.0.0.0 --reload
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    env_file: .env
+    depends_on:
+      - redis
+      - qdrant
+      - neo4j
+    command: celery -A backend.workers.research_tasks worker --loglevel=info --concurrency=4
+
+  mcp-sec-edgar:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mcp-server
+    environment:
+      - MCP_SERVER_NAME=sec-edgar
+    env_file: .env
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+  neo4j:
+    image: neo4j:5.25-enterprise
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc", "gds"]
+    volumes:
+      - neo4j_data:/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=aether
+      - POSTGRES_USER=aether
+      - POSTGRES_PASSWORD=aether
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  langfuse:
+    image: langfuse/langfuse:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://aether:aether@postgres:5432/langfuse
+      - NEXTAUTH_SECRET=secret
+      - SALT=salt
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  qdrant_storage:
+  neo4j_data:
+  postgres_data:

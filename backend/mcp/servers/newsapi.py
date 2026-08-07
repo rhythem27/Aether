@@ -1,0 +1,1 @@
+# FastMCP News API server

@@ -1,0 +1,3 @@
+[submodule "building-base"]
+	path = building-base
+	url = https://github.com/rhythem27/building-base.git

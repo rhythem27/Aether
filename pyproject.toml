@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "aether"
+version = "0.1.0"
+description = "Autonomous Multi-Agent Financial Intelligence Platform"
+authors = ["Aether Team <research@aether.ai>"]
+readme = "README.md"
+packages = [{include = "backend"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+langgraph = "^0.2.0"
+langchain = "^0.3.0"
+langchain-openai = "^0.2.0"
+langchain-anthropic = "^0.2.0"
+langchain-mcp = "^0.1.0"
+qdrant-client = "^1.12.0"
+neo4j = "^5.25.0"
+redis = "^5.2.0"
+celery = "^5.4.0"
+pydantic = "^2.9.0"
+pydantic-settings = "^2.6.0"
+unstructured = "^0.16.0"
+sentence-transformers = "^3.3.0"
+vllm = "^0.6.0"
+langfuse = "^2.53.0"
+prometheus-client = "^0.21.0"
+python-multipart = "^0.0.17"
+httpx = "^0.27.0"
+tenacity = "^9.0.0"
+structlog = "^24.4.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+hypothesis = "^6.119.0"
+black = "^24.10.0"
+ruff = "^0.7.0"
+mypy = "^1.13.0"
+pre-commit = "^4.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
