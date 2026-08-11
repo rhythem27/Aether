@@ -7,6 +7,8 @@ from backend.core.exceptions import AetherException, aether_exception_handler
 from backend.api.routers.health import router as health_router
 from backend.api.routers.documents import router as documents_router
 from backend.api.routers.graph import router as graph_router
+from backend.api.routers.research import router as research_router
+from backend.api.routers.websocket import router as websocket_router
 from backend.db.qdrant import close_qdrant_client
 from backend.db.neo4j import close_neo4j_driver
 from backend.db.redis import close_redis_client
@@ -43,6 +45,15 @@ app.include_router(health_router)
 app.include_router(health_router, prefix=settings.API_V1_STR)
 app.include_router(documents_router, prefix=settings.API_V1_STR)
 app.include_router(graph_router, prefix=settings.API_V1_STR)
+app.include_router(research_router, prefix=settings.API_V1_STR)
+app.include_router(websocket_router, prefix=settings.API_V1_STR)
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    from fastapi.responses import Response
+    from backend.core.metrics import get_prometheus_metrics
+    content, content_type = get_prometheus_metrics()
+    return Response(content=content, media_type=content_type)
 
 @app.get("/")
 async def root():
@@ -50,5 +61,6 @@ async def root():
         "name": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "docs_url": "/docs",
-        "health_url": "/health"
+        "health_url": "/health",
+        "metrics_url": "/metrics"
     }

@@ -3,9 +3,19 @@ from langchain_core.messages import AIMessage
 import structlog
 
 from backend.agents.state import AgentState
+from backend.core.observability import observe_agent
+from backend.core.metrics import VERIFIED_CLAIMS_COUNT
 
 logger = structlog.get_logger(__name__)
 
+try:
+    from langgraph.types import interrupt
+    INTERRUPT_AVAILABLE = True
+except ImportError:
+    INTERRUPT_AVAILABLE = False
+    interrupt = None
+
+@observe_agent(agent_name="verify_agent")
 async def verify_node(state: AgentState) -> Dict[str, Any]:
     """Fact-Checking & Verification Agent: Audits financial claims against primary SEC sources and RAG passages."""
     ticker = state.get("company_ticker", "UNKNOWN")
@@ -29,6 +39,7 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
                 "status": "VERIFIED",
                 "confidence_score": 0.98
             })
+            VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
         elif reported_rev:
             verified_claims.append({
                 "claim": f"{ticker} Reported Revenue is ${reported_rev:,}",
@@ -36,6 +47,7 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
                 "status": "UNVERIFIED_CLAIM",
                 "confidence_score": 0.50
             })
+            VERIFIED_CLAIMS_COUNT.labels(status="UNVERIFIED").inc()
 
         # 2. Audit Profit Margin & Risk Metrics
         margin = analysis_results.get("profit_margin_pct")
@@ -46,6 +58,7 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
                 "status": "VERIFIED",
                 "confidence_score": 0.95
             })
+            VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
 
         # 3. Check for unverified passages / hallucinated metrics
         passages = research_data.get("retrieved_passages", [])
@@ -56,6 +69,7 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
                 "status": "VERIFIED",
                 "confidence_score": 0.92
             })
+            VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
 
         verified_count = sum(1 for c in verified_claims if c.get("status") == "VERIFIED")
         ai_msg = AIMessage(
@@ -75,3 +89,26 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
             "errors": errors,
             "messages": [AIMessage(content=f"[Verify Agent Error] {err_msg}")]
         }
+
+async def high_risk_validator_node(state: AgentState) -> Dict[str, Any]:
+    """Human-in-the-Loop (HITL) Checkpoint Node using langgraph.types.interrupt."""
+    unverified = [c for c in state.get("verified_claims", []) if c.get("status") == "UNVERIFIED_CLAIM"]
+    
+    if unverified and INTERRUPT_AVAILABLE and interrupt:
+        logger.warning("hitl_interrupt_triggered", num_unverified=len(unverified))
+        decision = interrupt({
+            "unverified_claims": unverified,
+            "prompt": "Unverified financial claims detected. Human analyst decision required: approve or reject."
+        })
+        if isinstance(decision, dict) and decision.get("action") == "reject":
+            verified_clean = [c for c in state.get("verified_claims", []) if c.get("status") != "UNVERIFIED_CLAIM"]
+            return {
+                "verified_claims": verified_clean,
+                "human_approval": False,
+                "messages": [AIMessage(content="[HITL] Human analyst rejected unverified financial claims.")]
+            }
+
+    return {
+        "human_approval": True,
+        "messages": [AIMessage(content="[HITL] Financial claims validated and approved for final report synthesis.")]
+    }
