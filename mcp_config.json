@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "sec_edgar": {
+      "command": "python",
+      "args": ["-m", "backend.mcp.servers.sec_edgar"],
+      "env": {
+        "EDGAR_API_KEY": "${EDGAR_API_KEY}"
+      }
+    },
+    "crunchbase": {
+      "command": "python",
+      "args": ["-m", "backend.mcp.servers.crunchbase"],
+      "env": {
+        "CB_API_KEY": "${CRUNCHBASE_KEY}"
+      }
+    },
+    "newsapi": {
+      "command": "python",
+      "args": ["-m", "backend.mcp.servers.newsapi"],
+      "env": {
+        "NEWS_API_KEY": "${NEWS_API_KEY}"
+      }
+    },
+    "neo4j_graph": {
+      "command": "python",
+      "args": ["-m", "backend.mcp.servers.neo4j"],
+      "env": {
+        "NEO4J_URI": "${NEO4J_URI}"
+      }
+    }
+  }
+}
