@@ -6,6 +6,7 @@ from backend.core.logging import setup_logging, logger
 from backend.core.exceptions import AetherException, aether_exception_handler
 from backend.api.routers.health import router as health_router
 from backend.api.routers.documents import router as documents_router
+from backend.api.routers.graph import router as graph_router
 from backend.db.qdrant import close_qdrant_client
 from backend.db.neo4j import close_neo4j_driver
 from backend.db.redis import close_redis_client
@@ -41,6 +42,7 @@ app.add_exception_handler(AetherException, aether_exception_handler)
 app.include_router(health_router)
 app.include_router(health_router, prefix=settings.API_V1_STR)
 app.include_router(documents_router, prefix=settings.API_V1_STR)
+app.include_router(graph_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
