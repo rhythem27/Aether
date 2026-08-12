@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  
+  body {
+    background-color: #000000;
+    color: #ededed;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Vercel & Linear Style Minimalist Cards & Borders */
+.vercel-card {
+  background-color: #0a0a0a;
+  border: 1px solid #262626;
+  border-radius: 0.75rem;
+}
+
+.vercel-card-hover {
+  transition: all 0.15s ease;
+}
+
+.vercel-card-hover:hover {
+  border-color: #404040;
+  background-color: #121212;
+}
+
+.vercel-input {
+  background-color: #000000;
+  border: 1px solid #262626;
+  border-radius: 0.5rem;
+  color: #ffffff;
+}
+
+.vercel-input:focus {
+  border-color: #525252;
+  outline: none;
+}
+
+/* Minimal Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #404040;
+}
