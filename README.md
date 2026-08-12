@@ -1,6 +1,6 @@
 # Aether: Autonomous Multi-Agent Financial Intelligence Platform
 
-[![CI Pipeline](https://github.com/aether/aether/actions/workflows/ci.yml/badge.svg)](https://github.com/aether/aether/actions/workflows/ci.yml)
+[![CI Pipeline](https://github.com/rhythem27/aether/actions/workflows/ci.yml/badge.svg)](https://github.com/rhythem27/aether/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-Multi--Agent-orange.svg)](https://github.com/langchain-ai/langgraph)
@@ -102,7 +102,7 @@ flowchart LR
 
 ```bash
 # 1. Clone Repository
-git clone https://github.com/yourusername/aether.git
+git clone https://github.com/rhythem27/aether.git
 cd aether
 
 # 2. Install Dependencies via Poetry

@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📖 Aether Documentation & Roadmap
-    url: https://github.com/yourusername/aether#readme
+    url: https://github.com/rhythem27/aether#readme
     about: Read our technical specifications and roadmap before filing issues.
   - name: 💬 Security Advisory Disclosure
-    url: https://github.com/yourusername/aether/security/policy
+    url: https://github.com/rhythem27/aether/security/advisories/new
     about: Responsible disclosure process for security vulnerabilities.
