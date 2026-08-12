@@ -1,8 +1,17 @@
 import pytest
 
-from backend.mcp.servers.crunchbase import get_funding_rounds, get_investors, get_acquisition_history
+from backend.mcp.servers.crunchbase import (
+    get_funding_rounds,
+    get_investors,
+    get_acquisition_history,
+)
 from backend.mcp.servers.newsapi import get_recent_news, analyze_news_sentiment
-from backend.mcp.servers.neo4j import query_entity_subgraph, find_paths_between, execute_cypher
+from backend.mcp.servers.neo4j import (
+    query_entity_subgraph,
+    find_paths_between,
+    execute_cypher,
+)
+
 
 @pytest.mark.asyncio
 async def test_crunchbase_mcp_tools():
@@ -21,6 +30,7 @@ async def test_crunchbase_mcp_tools():
     assert len(acquisitions) > 0
     assert "acquiree_name" in acquisitions[0]
 
+
 @pytest.mark.asyncio
 async def test_newsapi_mcp_tools():
     articles = await get_recent_news("NVIDIA", limit=2)
@@ -32,6 +42,7 @@ async def test_newsapi_mcp_tools():
     assert "aggregate_score" in sentiment_res
     assert "sentiment" in sentiment_res
     assert sentiment_res["sentiment"] in ["BULLISH", "BEARISH", "NEUTRAL"]
+
 
 @pytest.mark.asyncio
 async def test_neo4j_mcp_tools():

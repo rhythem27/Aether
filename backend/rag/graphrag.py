@@ -1,13 +1,17 @@
 import re
-import uuid
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 from pydantic import BaseModel, Field
 import structlog
 
-from backend.db.neo4j import bulk_write_nodes_and_relationships, get_neo4j_driver, InMemoryNeo4jDriver
+from backend.db.neo4j import (
+    bulk_write_nodes_and_relationships,
+    get_neo4j_driver,
+    InMemoryNeo4jDriver,
+)
 
 logger = structlog.get_logger(__name__)
+
 
 class EntityType(str, Enum):
     COMPANY = "Company"
@@ -18,6 +22,7 @@ class EntityType(str, Enum):
     LAWSUIT = "Lawsuit"
     COMMUNITY = "Community"
 
+
 class RelationType(str, Enum):
     COMPETES_WITH = "COMPETES_WITH"
     INVESTED_IN = "INVESTED_IN"
@@ -27,11 +32,13 @@ class RelationType(str, Enum):
     TARGET_OF = "TARGET_OF"
     BELONGS_TO = "BELONGS_TO"
 
+
 class EntityNode(BaseModel):
     id: str
     name: str
     label: EntityType
     properties: Dict[str, Any] = Field(default_factory=dict)
+
 
 class RelationshipTriple(BaseModel):
     source_id: str
@@ -39,9 +46,11 @@ class RelationshipTriple(BaseModel):
     rel_type: RelationType
     properties: Dict[str, Any] = Field(default_factory=dict)
 
+
 class ExtractedGraphData(BaseModel):
     nodes: List[EntityNode] = Field(default_factory=list)
     relationships: List[RelationshipTriple] = Field(default_factory=list)
+
 
 class CommunitySummary(BaseModel):
     community_id: str
@@ -49,10 +58,12 @@ class CommunitySummary(BaseModel):
     summary_text: str
     entity_ids: List[str] = Field(default_factory=list)
 
+
 class GraphPassage(BaseModel):
     chunk_id: str
     text: str
     score: float = 1.0
+
 
 class EntityResolver:
     """Entity resolution & deduplication engine for canonicalizing financial entity names."""
@@ -64,7 +75,7 @@ class EntityResolver:
         "TSLA": "Tesla Inc.",
         "AMZN": "Amazon.com Inc.",
         "GOOGL": "Alphabet Inc.",
-        "META": "Meta Platforms Inc."
+        "META": "Meta Platforms Inc.",
     }
 
     @classmethod
@@ -82,13 +93,15 @@ class EntityResolver:
         return f"{entity_type.value.lower()}_{clean_slug}"
 
     @classmethod
-    def resolve_and_deduplicate(cls, extracted: ExtractedGraphData) -> ExtractedGraphData:
+    def resolve_and_deduplicate(
+        cls, extracted: ExtractedGraphData
+    ) -> ExtractedGraphData:
         """Deduplicate nodes and merge relationship triples."""
         node_map: Dict[str, EntityNode] = {}
         for node in extracted.nodes:
             canonical_name = cls.canonicalize_name(node.name)
             entity_id = cls.generate_entity_id(canonical_name, node.label)
-            
+
             if entity_id in node_map:
                 node_map[entity_id].properties.update(node.properties)
             else:
@@ -96,7 +109,7 @@ class EntityResolver:
                     id=entity_id,
                     name=canonical_name,
                     label=node.label,
-                    properties=node.properties
+                    properties=node.properties,
                 )
 
         rel_set: Set[Tuple[str, str, str]] = set()
@@ -109,8 +122,7 @@ class EntityResolver:
                 resolved_rels.append(rel)
 
         return ExtractedGraphData(
-            nodes=list(node_map.values()),
-            relationships=resolved_rels
+            nodes=list(node_map.values()), relationships=resolved_rels
         )
 
 
@@ -124,7 +136,7 @@ class EntityExtractor:
         # Acquisition Pattern
         acquisition_matches = re.findall(
             r"([A-Z][A-Za-z0-9\s,\.]+?)\s+(?:acquired|purchased|bought)\s+([A-Z][A-Za-z0-9\s,\.]+?)(?:\s+for|\.|$)",
-            text
+            text,
         )
         for buyer, target in acquisition_matches:
             b_name = buyer.strip()
@@ -132,35 +144,49 @@ class EntityExtractor:
             if len(b_name) > 2 and len(t_name) > 2:
                 b_id = EntityResolver.generate_entity_id(b_name, EntityType.COMPANY)
                 t_id = EntityResolver.generate_entity_id(t_name, EntityType.COMPANY)
-                
+
                 nodes.append(EntityNode(id=b_id, name=b_name, label=EntityType.COMPANY))
                 nodes.append(EntityNode(id=t_id, name=t_name, label=EntityType.COMPANY))
                 relationships.append(
-                    RelationshipTriple(source_id=b_id, target_id=t_id, rel_type=RelationType.ACQUIRED)
+                    RelationshipTriple(
+                        source_id=b_id, target_id=t_id, rel_type=RelationType.ACQUIRED
+                    )
                 )
 
         # Investment Pattern
         investment_matches = re.findall(
             r"([A-Z][A-Za-z0-9\s,\.]+?)\s+(?:invested in|led funding for|participated in)\s+([A-Z][A-Za-z0-9\s,\.]+?)(?:\s+|\.|$)",
-            text
+            text,
         )
         for inv, comp in investment_matches:
             inv_name = inv.strip()
             comp_name = comp.strip()
             if len(inv_name) > 2 and len(comp_name) > 2:
-                inv_id = EntityResolver.generate_entity_id(inv_name, EntityType.INVESTOR)
-                comp_id = EntityResolver.generate_entity_id(comp_name, EntityType.COMPANY)
-                
-                nodes.append(EntityNode(id=inv_id, name=inv_name, label=EntityType.INVESTOR))
-                nodes.append(EntityNode(id=comp_id, name=comp_name, label=EntityType.COMPANY))
+                inv_id = EntityResolver.generate_entity_id(
+                    inv_name, EntityType.INVESTOR
+                )
+                comp_id = EntityResolver.generate_entity_id(
+                    comp_name, EntityType.COMPANY
+                )
+
+                nodes.append(
+                    EntityNode(id=inv_id, name=inv_name, label=EntityType.INVESTOR)
+                )
+                nodes.append(
+                    EntityNode(id=comp_id, name=comp_name, label=EntityType.COMPANY)
+                )
                 relationships.append(
-                    RelationshipTriple(source_id=inv_id, target_id=comp_id, rel_type=RelationType.INVESTED_IN)
+                    RelationshipTriple(
+                        source_id=inv_id,
+                        target_id=comp_id,
+                        rel_type=RelationType.INVESTED_IN,
+                    )
                 )
 
         # Competition Pattern
         compete_matches = re.findall(
             r"([A-Z][A-Za-z0-9\s,\.]+?)\s+(?:competes with|is a competitor of)\s+([A-Z][A-Za-z0-9\s,\.]+?)(?:\s+|\.|$)",
-            text
+            text,
         )
         for c1, c2 in compete_matches:
             c1_name = c1.strip()
@@ -168,11 +194,19 @@ class EntityExtractor:
             if len(c1_name) > 2 and len(c2_name) > 2:
                 c1_id = EntityResolver.generate_entity_id(c1_name, EntityType.COMPANY)
                 c2_id = EntityResolver.generate_entity_id(c2_name, EntityType.COMPANY)
-                
-                nodes.append(EntityNode(id=c1_id, name=c1_name, label=EntityType.COMPANY))
-                nodes.append(EntityNode(id=c2_id, name=c2_name, label=EntityType.COMPANY))
+
+                nodes.append(
+                    EntityNode(id=c1_id, name=c1_name, label=EntityType.COMPANY)
+                )
+                nodes.append(
+                    EntityNode(id=c2_id, name=c2_name, label=EntityType.COMPANY)
+                )
                 relationships.append(
-                    RelationshipTriple(source_id=c1_id, target_id=c2_id, rel_type=RelationType.COMPETES_WITH)
+                    RelationshipTriple(
+                        source_id=c1_id,
+                        target_id=c2_id,
+                        rel_type=RelationType.COMPETES_WITH,
+                    )
                 )
 
         raw_graph = ExtractedGraphData(nodes=nodes, relationships=relationships)
@@ -191,13 +225,15 @@ class CommunityDetector:
             if not node_ids:
                 return []
             comm_id = "community_lvl1_0"
-            summary_text = f"Financial cluster containing entities: {', '.join(node_ids[:5])}"
+            summary_text = (
+                f"Financial cluster containing entities: {', '.join(node_ids[:5])}"
+            )
             return [
                 CommunitySummary(
                     community_id=comm_id,
                     level=1,
                     summary_text=summary_text,
-                    entity_ids=node_ids
+                    entity_ids=node_ids,
                 )
             ]
 
@@ -210,7 +246,7 @@ class CommunityDetector:
                 """
                 res = await session.run(query)
                 records = await res.data()
-                
+
                 community_groups: Dict[int, List[str]] = {}
                 for rec in records:
                     comm_id = rec["communityId"]
@@ -224,7 +260,7 @@ class CommunityDetector:
                             community_id=f"community_lvl1_{cid}",
                             level=1,
                             summary_text=f"Louvain Community {cid} comprising: {', '.join(e_list[:5])}",
-                            entity_ids=e_list
+                            entity_ids=e_list,
                         )
                     )
                 return summaries
@@ -234,9 +270,7 @@ class CommunityDetector:
 
 
 def rrf_score_fusion(
-    vector_passages: List[Any],
-    graph_passages: List[Any],
-    k: float = 60.0
+    vector_passages: List[Any], graph_passages: List[Any], k: float = 60.0
 ) -> List[Any]:
     """Reciprocal Rank Fusion (RRF) algorithm merging vector scores and graph traversal scores."""
     rrf_map: Dict[str, float] = {}
@@ -256,7 +290,7 @@ def rrf_score_fusion(
 
     # Sort items by combined RRF score descending
     sorted_p_ids = sorted(rrf_map.keys(), key=lambda pid: rrf_map[pid], reverse=True)
-    
+
     result = []
     for pid in sorted_p_ids:
         passage = passage_map[pid]
@@ -269,24 +303,27 @@ def rrf_score_fusion(
 
 
 async def traverse_2hop_graph(
-    driver: Any,
-    entity_name: Optional[str] = None,
-    limit: int = 50
+    driver: Any, entity_name: Optional[str] = None, limit: int = 50
 ) -> Dict[str, Any]:
     """Retrieve 2-hop neighborhood nodes and relationship edges from Neo4j."""
+    nodes_dict: Dict[str, Dict[str, Any]] = {}
+    links_list: List[Dict[str, Any]] = []
+
     if isinstance(driver, InMemoryNeo4jDriver):
         nodes_list = [
             {"id": nid, "label": data["label"], "properties": data["properties"]}
             for nid, data in driver.db["nodes"].items()
         ][:limit]
         links_list = [
-            {"source": r["source_id"], "target": r["target_id"], "type": r["rel_type"], "properties": r.get("properties", {})}
+            {
+                "source": r["source_id"],
+                "target": r["target_id"],
+                "type": r["rel_type"],
+                "properties": r.get("properties", {}),
+            }
             for r in driver.db["relationships"]
         ][:limit]
         return {"nodes": nodes_list, "links": links_list}
-
-    nodes_dict: Dict[str, Dict[str, Any]] = {}
-    links_list: List[Dict[str, Any]] = []
 
     cypher = """
     MATCH (n)-[r1]-(m)-[r2]-(p)
@@ -297,37 +334,42 @@ async def traverse_2hop_graph(
 
     try:
         async with driver.session() as session:
-            res = await session.run(cypher, parameters={"entity_name": entity_name, "limit": limit})
+            res = await session.run(
+                cypher, parameters={"entity_name": entity_name, "limit": limit}
+            )
             records = await res.data()
-            
+
             for rec in records:
                 for node_key in ["n", "m", "p"]:
                     node = rec.get(node_key)
                     if node:
                         node_id = node.get("id", str(node.id))
-                        labels = list(node.labels) if hasattr(node, "labels") else ["Entity"]
+                        labels = (
+                            list(node.labels) if hasattr(node, "labels") else ["Entity"]
+                        )
                         nodes_dict[node_id] = {
                             "id": node_id,
                             "label": labels[0] if labels else "Entity",
                             "name": node.get("name", node_id),
-                            "properties": dict(node)
+                            "properties": dict(node),
                         }
                 for rel_key in ["r1", "r2"]:
                     rel = rec.get(rel_key)
                     if rel:
-                        links_list.append({
-                            "source": rel.start_node.get("id", str(rel.start_node.id)),
-                            "target": rel.end_node.get("id", str(rel.end_node.id)),
-                            "type": rel.type,
-                            "properties": dict(rel)
-                        })
+                        links_list.append(
+                            {
+                                "source": rel.start_node.get(
+                                    "id", str(rel.start_node.id)
+                                ),
+                                "target": rel.end_node.get("id", str(rel.end_node.id)),
+                                "type": rel.type,
+                                "properties": dict(rel),
+                            }
+                        )
     except Exception as err:
         logger.warning("neo4j_graph_traverse_fallback", error=str(err))
 
-    return {
-        "nodes": list(nodes_dict.values()),
-        "links": links_list
-    }
+    return {"nodes": list(nodes_dict.values()), "links": links_list}
 
 
 class FinancialGraphRAG:
@@ -338,17 +380,19 @@ class FinancialGraphRAG:
         self.qdrant = qdrant_client
         self.extractor = EntityExtractor()
 
-    async def index_document_graph(self, text: str, source_id: Optional[str] = None) -> ExtractedGraphData:
+    async def index_document_graph(
+        self, text: str, source_id: Optional[str] = None
+    ) -> ExtractedGraphData:
         """Extract entities & relationships from text and commit to Neo4j graph store."""
         extracted = self.extractor.extract_from_text(text)
-        
+
         if extracted.nodes or extracted.relationships:
             nodes_dicts = [
                 {
                     "id": n.id,
                     "name": n.name,
                     "label": n.label.value,
-                    "properties": n.properties
+                    "properties": n.properties,
                 }
                 for n in extracted.nodes
             ]
@@ -357,36 +401,36 @@ class FinancialGraphRAG:
                     "source_id": r.source_id,
                     "target_id": r.target_id,
                     "rel_type": r.rel_type.value,
-                    "properties": r.properties
+                    "properties": r.properties,
                 }
                 for r in extracted.relationships
             ]
 
             await bulk_write_nodes_and_relationships(
-                nodes=nodes_dicts,
-                relationships=rels_dicts,
-                driver=self.driver
+                nodes=nodes_dicts, relationships=rels_dicts, driver=self.driver
             )
 
         logger.info(
             "document_graph_indexed",
             num_nodes=len(extracted.nodes),
-            num_rels=len(extracted.relationships)
+            num_rels=len(extracted.relationships),
         )
         return extracted
 
     async def query_hybrid_rrf(self, query: str, top_k: int = 5) -> List[Any]:
         """Perform multi-hop GraphRAG query combining graph traversal & vector search with RRF."""
         # 1. Traversal in Neo4j graph
-        graph_data = await traverse_2hop_graph(self.driver, entity_name=query, limit=top_k)
-        
+        graph_data = await traverse_2hop_graph(
+            self.driver, entity_name=query, limit=top_k
+        )
+
         graph_passages = []
         for link in graph_data.get("links", []):
             graph_passages.append(
                 GraphPassage(
                     chunk_id=f"rel_{link['source']}_{link['target']}",
                     text=f"{link['source']} {link['type']} {link['target']}",
-                    score=1.0
+                    score=1.0,
                 )
             )
 
@@ -394,6 +438,7 @@ class FinancialGraphRAG:
         vector_passages = []
         if self.qdrant:
             from backend.rag.retriever import HybridRetriever
+
             retriever = HybridRetriever(qdrant_client=self.qdrant)
             vector_passages = await retriever.search(query, top_k=top_k)
 

@@ -16,7 +16,7 @@ files = [
 name = "aiohappyeyeballs"
 version = "2.7.1"
 description = "Happy Eyeballs for asyncio"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -28,7 +28,7 @@ files = [
 name = "aiohttp"
 version = "3.14.3"
 description = "Async http client/server framework (asyncio)"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -170,7 +170,7 @@ speedups = ["Brotli (>=1.2) ; platform_python_implementation == \"CPython\" and 
 name = "aiohttp-cors"
 version = "0.8.1"
 description = "CORS support for aiohttp"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -185,7 +185,7 @@ aiohttp = ">=3.9"
 name = "aiosignal"
 version = "1.4.0"
 description = "aiosignal: a list of registered asynchronous callbacks"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -201,7 +201,7 @@ typing-extensions = {version = ">=4.2", markers = "python_version < \"3.13\""}
 name = "airportsdata"
 version = "20260803"
 description = "Extensive database of location and timezone data for nearly every airport and landing strip in the world."
-optional = false
+optional = true
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
@@ -299,7 +299,7 @@ trio = ["trio (>=0.32.0)"]
 name = "apache-tvm-ffi"
 version = "0.1.13.post2"
 description = "tvm ffi"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "platform_machine == \"x86_64\""
@@ -341,7 +341,7 @@ cpp = ["ninja"]
 name = "astor"
 version = "0.8.1"
 description = "Read/rewrite/write Python ASTs"
-optional = false
+optional = true
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 groups = ["main"]
 files = [
@@ -430,7 +430,7 @@ test = ["distro (>=1.9.0,<1.10.0)", "flake8 (>=6.1,<7.0)", "flake8-pyi (>=24.1.0
 name = "attrs"
 version = "26.1.0"
 description = "Classes Without Boilerplate"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -534,7 +534,7 @@ uvloop = ["uvloop (>=0.15.2)"]
 name = "blake3"
 version = "1.0.9"
 description = "Python bindings for the Rust blake3 crate"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -1064,7 +1064,7 @@ testing = ["pytest (>=7.2.1)", "pytest-cov (>=4.0.0)", "tox (>=4.4.3)"]
 name = "cloudpickle"
 version = "3.1.2"
 description = "Pickler class to extend the standard pickle.Pickler functionality"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -1089,7 +1089,7 @@ files = [
 name = "colorful"
 version = "0.5.8"
 description = "Terminal string styling done right, in Python."
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 files = [
@@ -1104,7 +1104,7 @@ colorama = {version = "*", markers = "platform_system == \"Windows\""}
 name = "compressed-tensors"
 version = "0.8.1"
 description = "Library for utilization of compressed safetensors of neural network models"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 files = [
@@ -1349,7 +1349,7 @@ files = [
 name = "depyf"
 version = "0.18.0"
 description = "Decompile python functions, from bytecode to source code!"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
@@ -1368,7 +1368,7 @@ dev = ["autopep8", "flake8", "pytest"]
 name = "dill"
 version = "0.4.1"
 description = "serialize all of Python"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -1384,7 +1384,7 @@ profile = ["gprof2dot (>=2022.7.29)"]
 name = "diskcache"
 version = "5.6.3"
 description = "Disk Cache -- Disk and file backed persistent cache."
-optional = false
+optional = true
 python-versions = ">=3"
 groups = ["main"]
 files = [
@@ -1437,7 +1437,7 @@ test = ["pytest"]
 name = "einops"
 version = "0.8.2"
 description = "A new flavour of deep learning operations"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -1548,7 +1548,7 @@ files = [
 name = "frozenlist"
 version = "1.8.0"
 description = "A list-like structure which implements collections.abc.MutableSequence"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -1728,7 +1728,7 @@ tqdm = ["tqdm"]
 name = "gguf"
 version = "0.10.0"
 description = "Read and write ML models in GGUF for GGML"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -1745,7 +1745,7 @@ tqdm = ">=4.27"
 name = "google-api-core"
 version = "2.34.0"
 description = "Google API client core library"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -1768,7 +1768,7 @@ grpc = ["grpcio (>=1.59.0,<2.0.0)", "grpcio (>=1.75.1,<2.0.0) ; python_version >
 name = "google-auth"
 version = "2.56.3"
 description = "Google Authentication Library"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -1800,7 +1800,7 @@ urllib3 = ["packaging (>=20.0)", "urllib3 (>=1.26.15,<3.0.0)"]
 name = "googleapis-common-protos"
 version = "1.75.1"
 description = "Common protobufs used in Google APIs"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -2434,7 +2434,7 @@ all = ["mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 name = "importlib-metadata"
 version = "9.0.0"
 description = "Read metadata from Python packages"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -2470,7 +2470,7 @@ files = [
 name = "interegular"
 version = "0.3.3"
 description = "a regex intersection checker"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
@@ -2654,7 +2654,7 @@ files = [
 name = "jsonschema"
 version = "4.26.0"
 description = "An implementation of JSON Schema validation for Python"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -2676,7 +2676,7 @@ format-nongpl = ["fqdn", "idna", "isoduration", "jsonpointer (>1.13)", "rfc3339-
 name = "jsonschema-specifications"
 version = "2025.9.1"
 description = "The JSON Schema meta-schemas and vocabularies, exposed as a Registry"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -2991,7 +2991,7 @@ vcr = ["vcrpy (>=7.0.0)"]
 name = "lark"
 version = "1.2.2"
 description = "a modern parsing library"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -3157,7 +3157,7 @@ files = [
 name = "lm-format-enforcer"
 version = "0.10.12"
 description = "Enforce the output format (JSON Schema, Regex etc) of a language model"
-optional = false
+optional = true
 python-versions = "<4.0,>=3.8"
 groups = ["main"]
 files = [
@@ -3500,7 +3500,7 @@ files = [
 name = "mistral-common"
 version = "1.5.6"
 description = ""
-optional = false
+optional = true
 python-versions = "<4.0.0,>=3.8.10"
 groups = ["main"]
 markers = "python_version >= \"3.14\""
@@ -3527,7 +3527,7 @@ opencv = ["opencv-python-headless (>=4.0.0)"]
 name = "mistral-common"
 version = "1.11.7"
 description = "Mistral-common is a library of common utilities for Mistral AI."
-optional = false
+optional = true
 python-versions = "<3.15,>=3.10.0"
 groups = ["main"]
 markers = "python_version <= \"3.13\""
@@ -3584,7 +3584,7 @@ tests = ["pytest (>=4.6)"]
 name = "msgpack"
 version = "1.2.1"
 description = "MessagePack serializer"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -3660,7 +3660,7 @@ files = [
 name = "msgspec"
 version = "0.21.1"
 description = "A fast serialization and validation library, with builtin support for JSON, MessagePack, YAML, and TOML."
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -3723,7 +3723,7 @@ yaml = ["pyyaml"]
 name = "multidict"
 version = "6.7.1"
 description = "multidict implementation"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -4359,7 +4359,7 @@ nvidia-nvjitlink-cu12 = "*"
 name = "nvidia-ml-py"
 version = "13.610.43"
 description = "Python Bindings for the NVIDIA Management Library"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 files = [
@@ -4454,7 +4454,7 @@ voice-helpers = ["numpy (>=2.0.2)", "sounddevice (>=0.5.1)"]
 name = "opencensus"
 version = "0.11.4"
 description = "A stats collection and distributed tracing framework"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 files = [
@@ -4471,7 +4471,7 @@ six = ">=1.16,<2.0"
 name = "opencensus-context"
 version = "0.1.3"
 description = "OpenCensus Runtime Context"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 files = [
@@ -4483,7 +4483,7 @@ files = [
 name = "opencv-python-headless"
 version = "4.11.0.86"
 description = "Wrapper package for OpenCV python bindings."
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
@@ -4506,7 +4506,7 @@ numpy = [
 name = "opentelemetry-api"
 version = "1.44.0"
 description = "OpenTelemetry Python API"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -4521,7 +4521,7 @@ typing-extensions = ">=4.5.0"
 name = "opentelemetry-exporter-prometheus"
 version = "0.65b0"
 description = "Prometheus Metric Exporter for OpenTelemetry"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -4538,7 +4538,7 @@ prometheus-client = ">=0.5.0,<1.0.0"
 name = "opentelemetry-proto"
 version = "1.44.0"
 description = "OpenTelemetry Python Proto"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -4553,7 +4553,7 @@ protobuf = ">=5.0,<8.0"
 name = "opentelemetry-sdk"
 version = "1.44.0"
 description = "OpenTelemetry Python SDK"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -4573,7 +4573,7 @@ file-configuration = ["opentelemetry-configuration (==0.65b0)"]
 name = "opentelemetry-semantic-conventions"
 version = "0.65b0"
 description = "OpenTelemetry Semantic Conventions"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -4732,7 +4732,7 @@ files = [
 name = "outlines"
 version = "0.1.11"
 description = "Probabilistic Generative Model Programming"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -4773,7 +4773,7 @@ vllm = ["numpy (<2)", "transformers", "vllm"]
 name = "outlines-core"
 version = "0.1.26"
 description = "Structured Text Generation in Rust"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -4827,7 +4827,7 @@ files = [
 name = "partial-json-parser"
 version = "0.2.1.1.post7"
 description = "Parse partial JSON generated by LLM"
-optional = false
+optional = true
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
@@ -5068,7 +5068,7 @@ twisted = ["twisted"]
 name = "prometheus-fastapi-instrumentator"
 version = "7.1.0"
 description = "Instrument your FastAPI app with Prometheus metrics"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -5099,7 +5099,7 @@ wcwidth = ">=0.1.4"
 name = "propcache"
 version = "0.5.2"
 description = "Accelerated property cache"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -5230,7 +5230,7 @@ files = [
 name = "proto-plus"
 version = "1.28.3"
 description = "Beautiful, Pythonic protocol buffers"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -5301,7 +5301,7 @@ test = ["psleak", "pytest", "pytest-instafail", "pytest-xdist", "pywin32 ; os_na
 name = "py-cpuinfo"
 version = "9.0.0"
 description = "Get CPU info with pure Python"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 files = [
@@ -5313,7 +5313,7 @@ files = [
 name = "py-spy"
 version = "0.4.2"
 description = ""
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 files = [
@@ -5334,7 +5334,7 @@ test = ["numpy"]
 name = "pyasn1"
 version = "0.6.4"
 description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -5346,7 +5346,7 @@ files = [
 name = "pyasn1-modules"
 version = "0.4.2"
 description = "A collection of ASN.1-based protocols modules"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -5361,7 +5361,7 @@ pyasn1 = ">=0.6.1,<0.7.0"
 name = "pycountry"
 version = "26.2.16"
 description = "ISO country, subdivision, language, currency and script definitions and their translations"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -5520,7 +5520,7 @@ typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 name = "pydantic-extra-types"
 version = "2.11.1"
 description = "Extra Pydantic types."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "python_version <= \"3.13\""
@@ -5913,7 +5913,7 @@ files = [
 name = "pyzmq"
 version = "27.1.0"
 description = "Python bindings for 0MQ"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -6169,7 +6169,7 @@ all = ["numpy"]
 name = "ray"
 version = "2.52.1"
 description = "Ray provides a simple, universal API for building distributed applications."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "python_version >= \"3.14\""
@@ -6237,7 +6237,7 @@ tune = ["fsspec", "pandas", "pyarrow (>=9.0.0)", "pydantic (<2.0.dev0 || >=2.5.d
 name = "ray"
 version = "2.56.1"
 description = "Ray provides a simple, universal API for building distributed applications."
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 markers = "python_version <= \"3.13\""
@@ -6331,7 +6331,7 @@ ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==23.2.1)", "requests (>=2.31.0)"
 name = "referencing"
 version = "0.37.0"
 description = "JSON Referencing + Python"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -6528,7 +6528,7 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 name = "rpds-py"
 version = "2026.6.3"
 description = "Python bindings to Rust's persistent data structures (rpds)"
-optional = false
+optional = true
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
@@ -6888,7 +6888,7 @@ train = ["accelerate (>=0.20.3)", "datasets"]
 name = "sentencepiece"
 version = "0.2.2"
 description = "Unsupervised text tokenizer and detokenizer."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -7006,7 +7006,7 @@ files = [
 name = "smart-open"
 version = "8.0.1"
 description = "Utils for streaming large files (S3, HDFS, GCS, SFTP, Azure Blob Storage, gzip, bz2, zst...)"
-optional = false
+optional = true
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
@@ -7438,7 +7438,7 @@ optree = ["optree (>=0.12.0)"]
 name = "torchvision"
 version = "0.20.1"
 description = "image and video datasets and models for torch deep learning"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
@@ -7593,7 +7593,7 @@ tutorials = ["matplotlib", "pandas", "tabulate"]
 name = "triton"
 version = "3.3.1"
 description = "A language and compiler for custom Deep Learning operations"
-optional = false
+optional = true
 python-versions = "*"
 groups = ["main"]
 markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and python_version >= \"3.15\""
@@ -7618,7 +7618,7 @@ tutorials = ["matplotlib", "pandas", "tabulate"]
 name = "triton"
 version = "3.7.1"
 description = "A language and compiler for custom Deep Learning operations"
-optional = false
+optional = true
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and python_version >= \"3.13\" and python_version < \"3.15\""
@@ -8061,7 +8061,7 @@ python-discovery = ">=1.4.2"
 name = "vllm"
 version = "0.6.6.post1"
 description = "A high-throughput and memory-efficient inference and serving engine for LLMs"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
@@ -8477,7 +8477,7 @@ files = [
 name = "xformers"
 version = "0.0.28.post3"
 description = "XFormers: A collection of composable Transformer building blocks."
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
@@ -8497,7 +8497,7 @@ torch = "2.5.1"
 name = "xgrammar"
 version = "0.2.5"
 description = "Efficient, Flexible and Portable Structured Generation"
-optional = false
+optional = true
 python-versions = "<4,>=3.8"
 groups = ["main"]
 markers = "platform_machine == \"x86_64\""
@@ -8723,7 +8723,7 @@ files = [
 name = "yarl"
 version = "1.24.5"
 description = "Yet another URL library"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -8842,7 +8842,7 @@ propcache = ">=0.2.1"
 name = "zipp"
 version = "4.1.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
@@ -8973,4 +8973,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "b64c0a78c1e4cd1ace3eabea0796704a5fa004fa094c9144a531957ca9cc7321"
+content-hash = "30a78fc8ccf3e6ef1e9aad87c267aec2a9d71364244697e4d8b429e694b2c816"

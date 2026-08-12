@@ -6,20 +6,17 @@ from backend.core.config import settings
 from backend.core.logging import logger
 
 engine = create_async_engine(
-    settings.postgres_async_url,
-    echo=False,
-    future=True,
-    pool_pre_ping=True
+    settings.postgres_async_url, echo=False, future=True, pool_pre_ping=True
 )
 
 AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False
+    engine, class_=AsyncSession, expire_on_commit=False
 )
+
 
 class Base(DeclarativeBase):
     pass
+
 
 async def get_postgres_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
@@ -30,6 +27,7 @@ async def get_postgres_session() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
 
 async def check_postgres_health() -> bool:
     try:

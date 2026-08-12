@@ -15,20 +15,26 @@ from backend.db.redis import close_redis_client
 
 setup_logging()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("starting_aether_platform", version=settings.VERSION, environment=settings.ENVIRONMENT)
+    logger.info(
+        "starting_aether_platform",
+        version=settings.VERSION,
+        environment=settings.ENVIRONMENT,
+    )
     yield
     logger.info("shutting_down_aether_platform")
     await close_qdrant_client()
     await close_neo4j_driver()
     await close_redis_client()
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -39,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_exception_handler(AetherException, aether_exception_handler)
+app.add_exception_handler(AetherException, aether_exception_handler)  # type: ignore[arg-type]
 
 app.include_router(health_router)
 app.include_router(health_router, prefix=settings.API_V1_STR)
@@ -48,12 +54,15 @@ app.include_router(graph_router, prefix=settings.API_V1_STR)
 app.include_router(research_router, prefix=settings.API_V1_STR)
 app.include_router(websocket_router, prefix=settings.API_V1_STR)
 
+
 @app.get("/metrics")
 async def prometheus_metrics():
     from fastapi.responses import Response
     from backend.core.metrics import get_prometheus_metrics
+
     content, content_type = get_prometheus_metrics()
     return Response(content=content, media_type=content_type)
+
 
 @app.get("/")
 async def root():
@@ -62,5 +71,5 @@ async def root():
         "version": settings.VERSION,
         "docs_url": "/docs",
         "health_url": "/health",
-        "metrics_url": "/metrics"
+        "metrics_url": "/metrics",
     }

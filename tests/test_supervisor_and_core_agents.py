@@ -1,10 +1,11 @@
 import pytest
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 
 from backend.agents.state import AgentState
 from backend.agents.supervisor import supervisor_router, create_supervisor_workflow
 from backend.agents.research import research_node
 from backend.agents.analysis import analysis_node
+
 
 def test_agent_state_initialization():
     state: AgentState = {
@@ -19,10 +20,11 @@ def test_agent_state_initialization():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
     assert state["company_ticker"] == "AAPL"
     assert len(state["messages"]) == 1
+
 
 def test_supervisor_router_branching():
     state: AgentState = {
@@ -37,9 +39,9 @@ def test_supervisor_router_branching():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
-    
+
     # 1. First step should route to research_agent
     assert supervisor_router(state) == "research_agent"
 
@@ -55,6 +57,7 @@ def test_supervisor_router_branching():
     state["errors"] = ["Error 1", "Error 2", "Error 3"]
     assert supervisor_router(state) == "human_escalation"
 
+
 @pytest.mark.asyncio
 async def test_research_node():
     state: AgentState = {
@@ -69,12 +72,13 @@ async def test_research_node():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
     res = await research_node(state)
     assert "research_data" in res
     assert res["research_data"]["ticker"] == "AAPL"
     assert len(res["messages"]) == 1
+
 
 @pytest.mark.asyncio
 async def test_analysis_node():
@@ -84,7 +88,10 @@ async def test_analysis_node():
         "company_name": "Tesla Motors",
         "fiscal_year": 2025,
         "research_data": {
-            "financial_extracts": {"revenue": 90_000_000_000, "net_income": 12_000_000_000}
+            "financial_extracts": {
+                "revenue": 90_000_000_000,
+                "net_income": 12_000_000_000,
+            }
         },
         "analysis_results": {},
         "verified_claims": [],
@@ -92,13 +99,14 @@ async def test_analysis_node():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
     res = await analysis_node(state)
     assert "analysis_results" in res
     results = res["analysis_results"]
     assert results["profit_margin_pct"] > 0
     assert "financial_risk_score" in results
+
 
 @pytest.mark.asyncio
 async def test_full_supervisor_workflow_execution():
@@ -115,7 +123,7 @@ async def test_full_supervisor_workflow_execution():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
 
     final_state = await app.ainvoke(initial_state)

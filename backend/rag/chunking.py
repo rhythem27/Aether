@@ -7,12 +7,14 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+
 class DocumentType(str, Enum):
     PDF = "pdf"
     HTML = "html"
     TXT = "txt"
     DOCX = "docx"
     UNKNOWN = "unknown"
+
 
 class ChunkMetadata(BaseModel):
     source_file: str
@@ -25,11 +27,13 @@ class ChunkMetadata(BaseModel):
     has_tables: bool = False
     tables_json: List[Dict[str, Any]] = Field(default_factory=list)
 
+
 class DocumentChunk(BaseModel):
     chunk_id: str
     text: str
     token_count: int
     metadata: ChunkMetadata
+
 
 class DocumentElement(BaseModel):
     element_type: str  # "title", "text", "table", "header"
@@ -38,11 +42,13 @@ class DocumentElement(BaseModel):
     section_heading: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
+
 class ParsedDocument(BaseModel):
     filename: str
     doc_type: DocumentType
     elements: List[DocumentElement]
     raw_text: str
+
 
 class DocumentParser:
     """Multi-Format Document Parsing Engine supporting PDF, HTML, TXT, and DOCX."""
@@ -66,7 +72,7 @@ class DocumentParser:
         content: Optional[bytes] = None,
         company_ticker: Optional[str] = None,
         fiscal_year: Optional[int] = None,
-        use_unstructured: bool = False
+        use_unstructured: bool = False,
     ) -> ParsedDocument:
         doc_type = self.detect_format(file_path)
         logger.info("parsing_document", file_path=file_path, doc_type=doc_type.value)
@@ -87,6 +93,7 @@ class DocumentParser:
         if use_unstructured or doc_type == DocumentType.PDF:
             try:
                 from unstructured.partition.auto import partition
+
                 if os.path.exists(file_path):
                     raw_elements = partition(filename=file_path)
                     if raw_elements:
@@ -94,15 +101,24 @@ class DocumentParser:
                         for idx, elem in enumerate(raw_elements):
                             elem_type = getattr(elem, "category", "text").lower()
                             elem_text = str(elem).strip()
-                            page_num = getattr(getattr(elem, "metadata", None), "page_number", 1) or 1
-                            
+                            page_num = (
+                                getattr(
+                                    getattr(elem, "metadata", None), "page_number", 1
+                                )
+                                or 1
+                            )
+
                             if elem_type in ["title", "header", "heading"]:
                                 current_section = elem_text
-                            
+
                             table_data = []
                             if elem_type == "table":
-                                html_table = getattr(getattr(elem, "metadata", None), "text_as_html", "")
-                                table_data = [{"raw_html": html_table, "text": elem_text}]
+                                html_table = getattr(
+                                    getattr(elem, "metadata", None), "text_as_html", ""
+                                )
+                                table_data = [
+                                    {"raw_html": html_table, "text": elem_text}
+                                ]
 
                             elements.append(
                                 DocumentElement(
@@ -110,13 +126,19 @@ class DocumentParser:
                                     text=elem_text,
                                     page_number=page_num,
                                     section_heading=current_section,
-                                    metadata={"table_data": table_data} if table_data else {}
+                                    metadata=(
+                                        {"table_data": table_data} if table_data else {}
+                                    ),
                                 )
                             )
                         text_content = "\n\n".join(e.text for e in elements)
                         parsed_via_unstructured = True
             except Exception as err:
-                logger.warning("unstructured_partition_fallback", file_path=file_path, error=str(err))
+                logger.warning(
+                    "unstructured_partition_fallback",
+                    file_path=file_path,
+                    error=str(err),
+                )
 
         if not parsed_via_unstructured:
             # High-speed fallback parser logic
@@ -127,10 +149,12 @@ class DocumentParser:
             filename=os.path.basename(file_path),
             doc_type=doc_type,
             elements=elements,
-            raw_text=text_content
+            raw_text=text_content,
         )
 
-    def _fallback_parse(self, text: str, doc_type: DocumentType) -> List[DocumentElement]:
+    def _fallback_parse(
+        self, text: str, doc_type: DocumentType
+    ) -> List[DocumentElement]:
         elements = []
         lines = text.splitlines()
         current_section = None
@@ -148,7 +172,7 @@ class DocumentParser:
                         element_type="title",
                         text=stripped,
                         page_number=1,
-                        section_heading=current_section
+                        section_heading=current_section,
                     )
                 )
             # Detect table structure (e.g. pipe-delimited or tab-separated matrix)
@@ -160,7 +184,7 @@ class DocumentParser:
                         text=stripped,
                         page_number=1,
                         section_heading=current_section,
-                        metadata={"table_matrix": cols}
+                        metadata={"table_matrix": cols},
                     )
                 )
             else:
@@ -169,7 +193,7 @@ class DocumentParser:
                         element_type="text",
                         text=stripped,
                         page_number=1,
-                        section_heading=current_section
+                        section_heading=current_section,
                     )
                 )
 
@@ -188,6 +212,7 @@ class TokenAwareChunker:
         """Estimate token count (approx. 4 chars per token fallback or tiktoken if installed)."""
         try:
             import tiktoken
+
             enc = tiktoken.get_encoding("cl100k_base")
             return len(enc.encode(text))
         except Exception:
@@ -199,7 +224,7 @@ class TokenAwareChunker:
         company_ticker: Optional[str] = None,
         company_name: Optional[str] = None,
         fiscal_year: Optional[int] = None,
-        document_type: str = "financial_report"
+        document_type: str = "financial_report",
     ) -> List[DocumentChunk]:
         chunks: List[DocumentChunk] = []
         chunk_idx = 0
@@ -212,19 +237,18 @@ class TokenAwareChunker:
 
         for element in document.elements:
             elem_tokens = self.count_tokens(element.text)
-            
+
             # If element is a table, retain its structured payload
             if element.element_type == "table":
-                tables_in_chunk.append({
-                    "text": element.text,
-                    "metadata": element.metadata
-                })
+                tables_in_chunk.append(
+                    {"text": element.text, "metadata": element.metadata}
+                )
 
             # Check if adding this element exceeds max token window
             if current_token_count + elem_tokens > self.max_tokens and current_text_buf:
                 chunk_text = "\n\n".join(current_text_buf)
                 chunk_idx += 1
-                
+
                 chunks.append(
                     DocumentChunk(
                         chunk_id=f"{document.filename}_chunk_{chunk_idx}",
@@ -239,8 +263,8 @@ class TokenAwareChunker:
                             fiscal_year=fiscal_year,
                             document_type=document_type,
                             has_tables=len(tables_in_chunk) > 0,
-                            tables_json=tables_in_chunk
-                        )
+                            tables_json=tables_in_chunk,
+                        ),
                     )
                 )
 
@@ -273,10 +297,12 @@ class TokenAwareChunker:
                         fiscal_year=fiscal_year,
                         document_type=document_type,
                         has_tables=len(tables_in_chunk) > 0,
-                        tables_json=tables_in_chunk
-                    )
+                        tables_json=tables_in_chunk,
+                    ),
                 )
             )
 
-        logger.info("chunking_complete", filename=document.filename, num_chunks=len(chunks))
+        logger.info(
+            "chunking_complete", filename=document.filename, num_chunks=len(chunks)
+        )
         return chunks

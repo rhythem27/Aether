@@ -5,6 +5,18 @@ description = "Autonomous Multi-Agent Financial Intelligence Platform"
 authors = ["Aether Team <research@aether.ai>"]
 readme = "README.md"
 packages = [{include = "backend"}]
+license = "MIT"
+repository = "https://github.com/rhythem27/aether"
+homepage = "https://github.com/rhythem27/aether"
+documentation = "https://github.com/rhythem27/aether/tree/main/docs"
+keywords = ["rag", "graphrag", "multi-agent", "financial-intelligence", "mcp", "fastmcp", "qdrant", "neo4j", "langgraph"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -23,7 +35,7 @@ pydantic = "^2.9.0"
 pydantic-settings = "^2.6.0"
 unstructured = "^0.16.0"
 sentence-transformers = "^3.3.0"
-vllm = "^0.6.0"
+vllm = { version = "^0.6.0", optional = true }
 langfuse = "^2.53.0"
 prometheus-client = "^0.21.0"
 python-multipart = "^0.0.17"
@@ -46,3 +58,11 @@ pre-commit = "^4.0.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+

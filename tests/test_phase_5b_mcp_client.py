@@ -1,9 +1,9 @@
 import pytest
-from unittest.mock import MagicMock
 
-from backend.mcp.client import MCPClientManager, mcp_client, retry_mcp_call
+from backend.mcp.client import MCPClientManager, mcp_client
 from backend.agents.state import AgentState
 from backend.agents.research import research_node
+
 
 def test_mcp_client_config_loading():
     client = MCPClientManager("mcp_config.json")
@@ -14,12 +14,16 @@ def test_mcp_client_config_loading():
     assert "newsapi" in config["mcpServers"]
     assert "neo4j_graph" in config["mcpServers"]
 
+
 def test_mcp_client_tool_aggregation():
-    tools = mcp_client.get_tools_for_servers(["sec_edgar", "crunchbase", "newsapi", "neo4j_graph"])
+    tools = mcp_client.get_tools_for_servers(
+        ["sec_edgar", "crunchbase", "newsapi", "neo4j_graph"]
+    )
     assert "search_filings" in tools
     assert "get_funding_rounds" in tools
     assert "get_recent_news" in tools
     assert "query_entity_subgraph" in tools
+
 
 @pytest.mark.asyncio
 async def test_execute_tool_with_retry_success():
@@ -28,6 +32,7 @@ async def test_execute_tool_with_retry_success():
 
     res = await mcp_client.execute_tool_with_retry(sample_tool, 21)
     assert res == 42
+
 
 @pytest.mark.asyncio
 async def test_execute_tool_with_retry_flaky_recovery():
@@ -44,6 +49,7 @@ async def test_execute_tool_with_retry_flaky_recovery():
     assert res == "SUCCESS"
     assert attempts == 2
 
+
 @pytest.mark.asyncio
 async def test_research_agent_mcp_integration():
     state: AgentState = {
@@ -58,7 +64,7 @@ async def test_research_agent_mcp_integration():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
 
     res = await research_node(state)

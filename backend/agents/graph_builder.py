@@ -1,12 +1,13 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from langchain_core.messages import AIMessage
 import structlog
 
 from backend.agents.state import AgentState
-from backend.db.neo4j import bulk_write_nodes_and_relationships, get_neo4j_driver, InMemoryNeo4jDriver
+from backend.db.neo4j import bulk_write_nodes_and_relationships, get_neo4j_driver
 from backend.rag.graphrag import EntityExtractor, EntityResolver, EntityType
 
 logger = structlog.get_logger(__name__)
+
 
 async def graph_node(state: AgentState) -> Dict[str, Any]:
     """Graph Operations Agent: Validates entity networks and executes transactional bulk Cypher updates into Neo4j."""
@@ -20,13 +21,13 @@ async def graph_node(state: AgentState) -> Dict[str, Any]:
 
     try:
         extractor = EntityExtractor()
-        
+
         # Aggregate text disclosures for graph extraction
-        text_snippets = [company_name]
+        text_snippets: List[str] = [company_name] if company_name else []
         profile_str = research_data.get("company_profile", "")
         if profile_str:
             text_snippets.append(profile_str)
-        
+
         for passage in research_data.get("retrieved_passages", []):
             if isinstance(passage, dict) and "text" in passage:
                 text_snippets.append(passage["text"])
@@ -35,33 +36,37 @@ async def graph_node(state: AgentState) -> Dict[str, Any]:
         extracted = extractor.extract_from_text(combined_text)
 
         # Ensure target company node exists
-        canonical_target = EntityResolver.canonicalize_name(company_name)
-        target_id = EntityResolver.generate_entity_id(canonical_target, EntityType.COMPANY)
-        
+        canonical_target = EntityResolver.canonicalize_name(company_name or "Unknown")
+        target_id = EntityResolver.generate_entity_id(
+            canonical_target, EntityType.COMPANY
+        )
+
         nodes_dicts = [
             {
                 "id": target_id,
                 "name": canonical_target,
                 "label": EntityType.COMPANY.value,
-                "properties": {"ticker": ticker}
+                "properties": {"ticker": ticker},
             }
         ]
-        
+
         for node in extracted.nodes:
             if node.id != target_id:
-                nodes_dicts.append({
-                    "id": node.id,
-                    "name": node.name,
-                    "label": node.label.value,
-                    "properties": node.properties
-                })
+                nodes_dicts.append(
+                    {
+                        "id": node.id,
+                        "name": node.name,
+                        "label": node.label.value,
+                        "properties": node.properties,
+                    }
+                )
 
         rels_dicts = [
             {
                 "source_id": r.source_id,
                 "target_id": r.target_id,
                 "rel_type": r.rel_type.value,
-                "properties": r.properties
+                "properties": r.properties,
             }
             for r in extracted.relationships
         ]
@@ -78,9 +83,7 @@ async def graph_node(state: AgentState) -> Dict[str, Any]:
                 driver = get_neo4j_driver("memory")
 
         total_committed = await bulk_write_nodes_and_relationships(
-            nodes=nodes_dicts,
-            relationships=rels_dicts,
-            driver=driver
+            nodes=nodes_dicts, relationships=rels_dicts, driver=driver  # type: ignore[arg-type]
         )
 
         op_entry = {
@@ -88,7 +91,7 @@ async def graph_node(state: AgentState) -> Dict[str, Any]:
             "company_ticker": ticker,
             "nodes_committed": len(nodes_dicts),
             "relationships_committed": len(rels_dicts),
-            "total_elements": total_committed
+            "total_elements": total_committed,
         }
         graph_ops.append(op_entry)
 
@@ -96,10 +99,7 @@ async def graph_node(state: AgentState) -> Dict[str, Any]:
             content=f"[Graph Agent] Successfully committed {len(nodes_dicts)} entity nodes and {len(rels_dicts)} relationship edges to Neo4j graph store."
         )
 
-        return {
-            "graph_operations": graph_ops,
-            "messages": [ai_msg]
-        }
+        return {"graph_operations": graph_ops, "messages": [ai_msg]}
 
     except Exception as e:
         err_msg = f"Graph Agent failed for {ticker}: {str(e)}"
@@ -107,5 +107,5 @@ async def graph_node(state: AgentState) -> Dict[str, Any]:
         errors.append(err_msg)
         return {
             "errors": errors,
-            "messages": [AIMessage(content=f"[Graph Agent Error] {err_msg}")]
+            "messages": [AIMessage(content=f"[Graph Agent Error] {err_msg}")],
         }

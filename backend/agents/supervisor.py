@@ -1,7 +1,6 @@
 from typing import Any, Dict, Optional
 from langchain_core.messages import AIMessage
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
 import structlog
 
 from backend.agents.state import AgentState
@@ -13,17 +12,15 @@ from backend.agents.report import report_node
 
 logger = structlog.get_logger(__name__)
 
+
 async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     """Supervisor Agent: Decomposes tasks, validates inputs, and plans next steps."""
     ticker = state.get("company_ticker", "UNKNOWN")
     logger.info("supervisor_node_executing", ticker=ticker)
 
-    ai_msg = AIMessage(
-        content=f"[Supervisor Agent] Planning execution for {ticker}."
-    )
-    return {
-        "messages": [ai_msg]
-    }
+    ai_msg = AIMessage(content=f"[Supervisor Agent] Planning execution for {ticker}.")
+    return {"messages": [ai_msg]}
+
 
 def supervisor_router(state: AgentState) -> str:
     """Routing edge logic for Supervisor Plan-Execute workflow."""
@@ -45,13 +42,19 @@ def supervisor_router(state: AgentState) -> str:
 
     return END
 
+
 async def human_escalation_node(state: AgentState) -> Dict[str, Any]:
     """Human-in-the-loop escalation node for unresolved agent errors."""
     logger.error("human_escalation_node_triggered", errors=state.get("errors"))
     return {
         "human_approval": False,
-        "messages": [AIMessage(content="[Escalation] Workflow suspended due to repeated errors. Human approval required.")]
+        "messages": [
+            AIMessage(
+                content="[Escalation] Workflow suspended due to repeated errors. Human approval required."
+            )
+        ],
     }
+
 
 def create_supervisor_workflow(checkpointer: Optional[Any] = None):
     """Build and compile the multi-agent LangGraph workflow with optional checkpointer persistence."""
@@ -77,8 +80,8 @@ def create_supervisor_workflow(checkpointer: Optional[Any] = None):
             "graph_agent": "graph_agent",
             "report_agent": "report_agent",
             "human_escalation": "human_escalation",
-            END: END
-        }
+            END: END,
+        },
     )
 
     # Return to supervisor after each agent step

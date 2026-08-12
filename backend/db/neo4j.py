@@ -5,8 +5,10 @@ from backend.core.logging import logger
 
 _neo4j_driver: Optional[AsyncDriver] = None
 
+
 class InMemorySession:
     """Mock Neo4j session for offline unit testing."""
+
     def __init__(self, db_store: Dict[str, Any]):
         self.db = db_store
 
@@ -24,7 +26,10 @@ class InMemorySession:
                 for node in params["nodes"]:
                     node_id = node.get("id")
                     label = node.get("label", "Entity")
-                    self.db["nodes"][node_id] = {"label": label, "properties": node.get("properties", {})}
+                    self.db["nodes"][node_id] = {
+                        "label": label,
+                        "properties": node.get("properties", {}),
+                    }
             if "relationships" in params:
                 for rel in params["relationships"]:
                     self.db["relationships"].append(rel)
@@ -38,13 +43,16 @@ class InMemorySession:
         class Result:
             async def single(self):
                 return Record()
+
             async def data(self):
                 return []
 
         return Result()
 
+
 class InMemoryNeo4jDriver:
     """In-memory Neo4j driver mock for testing environments without active Neo4j container."""
+
     def __init__(self):
         self.db = {"nodes": {}, "relationships": []}
 
@@ -54,16 +62,17 @@ class InMemoryNeo4jDriver:
     async def close(self):
         pass
 
+
 def get_neo4j_driver(uri: Optional[str] = None) -> AsyncDriver:
     global _neo4j_driver
     if uri is not None and uri == "memory":
-        return InMemoryNeo4jDriver()
+        return InMemoryNeo4jDriver()  # type: ignore[return-value]
     if _neo4j_driver is None:
         _neo4j_driver = AsyncGraphDatabase.driver(
-            settings.NEO4J_URI,
-            auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
+            settings.NEO4J_URI, auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
         )
     return _neo4j_driver
+
 
 async def init_neo4j_schema(driver: Optional[AsyncDriver] = None):
     """Initialize Neo4j Cypher unique constraints and vector indexes for financial entities."""
@@ -79,12 +88,12 @@ async def init_neo4j_schema(driver: Optional[AsyncDriver] = None):
         "CREATE CONSTRAINT investor_id_unique IF NOT EXISTS FOR (i:Investor) REQUIRE i.id IS UNIQUE",
         "CREATE CONSTRAINT sector_name_unique IF NOT EXISTS FOR (s:Sector) REQUIRE s.name IS UNIQUE",
         "CREATE CONSTRAINT filing_id_unique IF NOT EXISTS FOR (f:Filing) REQUIRE f.id IS UNIQUE",
-        "CREATE CONSTRAINT lawsuit_id_unique IF NOT EXISTS FOR (l:Lawsuit) REQUIRE l.id IS UNIQUE"
+        "CREATE CONSTRAINT lawsuit_id_unique IF NOT EXISTS FOR (l:Lawsuit) REQUIRE l.id IS UNIQUE",
     ]
 
     indexes = [
         "CREATE INDEX company_name_idx IF NOT EXISTS FOR (c:Company) ON (c.name)",
-        "CREATE INDEX filing_ticker_idx IF NOT EXISTS FOR (f:Filing) ON (f.ticker)"
+        "CREATE INDEX filing_ticker_idx IF NOT EXISTS FOR (f:Filing) ON (f.ticker)",
     ]
 
     try:
@@ -93,30 +102,37 @@ async def init_neo4j_schema(driver: Optional[AsyncDriver] = None):
                 try:
                     await session.run(constraint)
                 except Exception as c_err:
-                    logger.warning("cypher_constraint_creation_warn", query=constraint, error=str(c_err))
+                    logger.warning(
+                        "cypher_constraint_creation_warn",
+                        query=constraint,
+                        error=str(c_err),
+                    )
 
             for index in indexes:
                 try:
                     await session.run(index)
                 except Exception as i_err:
-                    logger.warning("cypher_index_creation_warn", query=index, error=str(i_err))
+                    logger.warning(
+                        "cypher_index_creation_warn", query=index, error=str(i_err)
+                    )
 
         logger.info("neo4j_schema_initialized_successfully")
     except Exception as e:
         logger.error("neo4j_schema_init_failed", error=str(e))
         raise
 
+
 async def bulk_write_nodes_and_relationships(
     nodes: List[Dict[str, Any]],
     relationships: List[Dict[str, Any]],
-    driver: Optional[AsyncDriver] = None
+    driver: Optional[AsyncDriver] = None,
 ) -> int:
     """Async transactional Cypher bulk batch writer using UNWIND parameterization."""
     if not nodes and not relationships:
         return 0
 
     d = driver or get_neo4j_driver()
-    
+
     # Process nodes grouped by label to maintain clean Cypher syntax
     nodes_by_label: Dict[str, List[Dict[str, Any]]] = {}
     for node in nodes:
@@ -156,20 +172,26 @@ async def bulk_write_nodes_and_relationships(
                 SET r += rel.properties
                 """
                 try:
-                    await session.run(cypher_rel_query, parameters={"relationships": type_rels})
+                    await session.run(
+                        cypher_rel_query, parameters={"relationships": type_rels}
+                    )
                     written_count += len(type_rels)
                 except Exception as e:
-                    logger.error("neo4j_bulk_rel_write_failed", rel_type=rel_type, error=str(e))
+                    logger.error(
+                        "neo4j_bulk_rel_write_failed", rel_type=rel_type, error=str(e)
+                    )
                     raise
 
     logger.info("neo4j_bulk_write_complete", total_elements=written_count)
     return written_count
+
 
 async def close_neo4j_driver():
     global _neo4j_driver
     if _neo4j_driver is not None:
         await _neo4j_driver.close()
         _neo4j_driver = None
+
 
 async def check_neo4j_health() -> bool:
     try:

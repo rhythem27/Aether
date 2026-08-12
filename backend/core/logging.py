@@ -3,9 +3,10 @@ import sys
 import structlog
 from backend.core.config import settings
 
+
 def setup_logging():
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
-    
+
     shared_processors = [
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -38,5 +39,6 @@ def setup_logging():
         stream=sys.stdout,
         level=log_level,
     )
+
 
 logger = structlog.get_logger("aether")

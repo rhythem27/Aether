@@ -10,10 +10,12 @@ logger = structlog.get_logger(__name__)
 
 try:
     from langgraph.types import interrupt
+
     INTERRUPT_AVAILABLE = True
 except ImportError:
     INTERRUPT_AVAILABLE = False
-    interrupt = None
+    interrupt = None  # type: ignore[assignment]
+
 
 @observe_agent(agent_name="verify_agent")
 async def verify_node(state: AgentState) -> Dict[str, Any]:
@@ -33,53 +35,60 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
 
         # 1. Audit Revenue Claim
         if reported_rev and source_rev and reported_rev == source_rev:
-            verified_claims.append({
-                "claim": f"{ticker} Annual Revenue is ${reported_rev:,}",
-                "source": "SEC EDGAR 10-K",
-                "status": "VERIFIED",
-                "confidence_score": 0.98
-            })
+            verified_claims.append(
+                {
+                    "claim": f"{ticker} Annual Revenue is ${reported_rev:,}",
+                    "source": "SEC EDGAR 10-K",
+                    "status": "VERIFIED",
+                    "confidence_score": 0.98,
+                }
+            )
             VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
         elif reported_rev:
-            verified_claims.append({
-                "claim": f"{ticker} Reported Revenue is ${reported_rev:,}",
-                "source": "Unverified Primary Source",
-                "status": "UNVERIFIED_CLAIM",
-                "confidence_score": 0.50
-            })
+            verified_claims.append(
+                {
+                    "claim": f"{ticker} Reported Revenue is ${reported_rev:,}",
+                    "source": "Unverified Primary Source",
+                    "status": "UNVERIFIED_CLAIM",
+                    "confidence_score": 0.50,
+                }
+            )
             VERIFIED_CLAIMS_COUNT.labels(status="UNVERIFIED").inc()
 
         # 2. Audit Profit Margin & Risk Metrics
         margin = analysis_results.get("profit_margin_pct")
         if margin is not None:
-            verified_claims.append({
-                "claim": f"{ticker} Profit Margin is {margin}%",
-                "source": "Computed Financial Analysis Model",
-                "status": "VERIFIED",
-                "confidence_score": 0.95
-            })
+            verified_claims.append(
+                {
+                    "claim": f"{ticker} Profit Margin is {margin}%",
+                    "source": "Computed Financial Analysis Model",
+                    "status": "VERIFIED",
+                    "confidence_score": 0.95,
+                }
+            )
             VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
 
         # 3. Check for unverified passages / hallucinated metrics
         passages = research_data.get("retrieved_passages", [])
         if passages:
-            verified_claims.append({
-                "claim": f"Grounded in {len(passages)} primary document RAG passages",
-                "source": "Qdrant Hybrid Vector Store",
-                "status": "VERIFIED",
-                "confidence_score": 0.92
-            })
+            verified_claims.append(
+                {
+                    "claim": f"Grounded in {len(passages)} primary document RAG passages",
+                    "source": "Qdrant Hybrid Vector Store",
+                    "status": "VERIFIED",
+                    "confidence_score": 0.92,
+                }
+            )
             VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
 
-        verified_count = sum(1 for c in verified_claims if c.get("status") == "VERIFIED")
+        verified_count = sum(
+            1 for c in verified_claims if c.get("status") == "VERIFIED"
+        )
         ai_msg = AIMessage(
             content=f"[Verify Agent] Completed claim audit for {ticker}. Verified {verified_count}/{len(verified_claims)} financial claims against primary sources."
         )
 
-        return {
-            "verified_claims": verified_claims,
-            "messages": [ai_msg]
-        }
+        return {"verified_claims": verified_claims, "messages": [ai_msg]}
 
     except Exception as e:
         err_msg = f"Verify Agent failed for {ticker}: {str(e)}"
@@ -87,28 +96,47 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
         errors.append(err_msg)
         return {
             "errors": errors,
-            "messages": [AIMessage(content=f"[Verify Agent Error] {err_msg}")]
+            "messages": [AIMessage(content=f"[Verify Agent Error] {err_msg}")],
         }
+
 
 async def high_risk_validator_node(state: AgentState) -> Dict[str, Any]:
     """Human-in-the-Loop (HITL) Checkpoint Node using langgraph.types.interrupt."""
-    unverified = [c for c in state.get("verified_claims", []) if c.get("status") == "UNVERIFIED_CLAIM"]
-    
-    if unverified and INTERRUPT_AVAILABLE and interrupt:
+    unverified = [
+        c
+        for c in state.get("verified_claims", [])
+        if c.get("status") == "UNVERIFIED_CLAIM"
+    ]
+
+    if unverified and INTERRUPT_AVAILABLE and callable(interrupt):
         logger.warning("hitl_interrupt_triggered", num_unverified=len(unverified))
-        decision = interrupt({
-            "unverified_claims": unverified,
-            "prompt": "Unverified financial claims detected. Human analyst decision required: approve or reject."
-        })
+        decision = interrupt(
+            {
+                "unverified_claims": unverified,
+                "prompt": "Unverified financial claims detected. Human analyst decision required: approve or reject.",
+            }
+        )
         if isinstance(decision, dict) and decision.get("action") == "reject":
-            verified_clean = [c for c in state.get("verified_claims", []) if c.get("status") != "UNVERIFIED_CLAIM"]
+            verified_clean = [
+                c
+                for c in state.get("verified_claims", [])
+                if c.get("status") != "UNVERIFIED_CLAIM"
+            ]
             return {
                 "verified_claims": verified_clean,
                 "human_approval": False,
-                "messages": [AIMessage(content="[HITL] Human analyst rejected unverified financial claims.")]
+                "messages": [
+                    AIMessage(
+                        content="[HITL] Human analyst rejected unverified financial claims."
+                    )
+                ],
             }
 
     return {
         "human_approval": True,
-        "messages": [AIMessage(content="[HITL] Financial claims validated and approved for final report synthesis.")]
+        "messages": [
+            AIMessage(
+                content="[HITL] Financial claims validated and approved for final report synthesis."
+            )
+        ],
     }

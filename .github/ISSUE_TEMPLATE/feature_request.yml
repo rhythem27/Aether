@@ -1,0 +1,32 @@
+name: 🚀 Feature Request
+description: Propose a new feature, agent tool, or architectural enhancement
+title: "[FEAT]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for suggesting a feature! Please provide context on the feature request.
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Proposal
+      description: Describe the feature you would like to see added.
+      placeholder: Describe the desired functionality or architectural extension...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-context
+    attributes:
+      label: Problem Context / Use Case
+      description: Is your feature request related to a specific problem or limitation?
+      placeholder: Explain why this feature is valuable for financial intelligence due diligence...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Implementation / Alternatives
+      description: Describe how you envision this being implemented or alternative approaches considered.

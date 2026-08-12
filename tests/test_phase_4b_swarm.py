@@ -8,6 +8,7 @@ from backend.agents.graph_builder import graph_node
 from backend.agents.report import report_node
 from backend.agents.supervisor import create_supervisor_workflow
 
+
 @pytest.mark.asyncio
 async def test_verify_node_audit():
     state: AgentState = {
@@ -17,20 +18,20 @@ async def test_verify_node_audit():
         "fiscal_year": 2025,
         "research_data": {
             "financial_extracts": {"revenue": 60_000_000_000},
-            "retrieved_passages": [{"text": "NVIDIA GPU sales doubled."}]
+            "retrieved_passages": [{"text": "NVIDIA GPU sales doubled."}],
         },
         "analysis_results": {
             "revenue": 60_000_000_000,
             "profit_margin_pct": 45.0,
             "financial_risk_score": 15.0,
-            "risk_rating": "Low Risk"
+            "risk_rating": "Low Risk",
         },
         "verified_claims": [],
         "graph_operations": [],
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
 
     res = await verify_node(state)
@@ -38,6 +39,7 @@ async def test_verify_node_audit():
     claims = res["verified_claims"]
     assert len(claims) >= 2
     assert any(c["status"] == "VERIFIED" for c in claims)
+
 
 @pytest.mark.asyncio
 async def test_graph_node_operations():
@@ -48,7 +50,7 @@ async def test_graph_node_operations():
         "fiscal_year": 2025,
         "research_data": {
             "company_profile": "Apple Inc. acquired Beats Electronics.",
-            "retrieved_passages": []
+            "retrieved_passages": [],
         },
         "analysis_results": {},
         "verified_claims": [],
@@ -56,7 +58,7 @@ async def test_graph_node_operations():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
 
     res = await graph_node(state)
@@ -64,6 +66,7 @@ async def test_graph_node_operations():
     ops = res["graph_operations"]
     assert len(ops) > 0
     assert ops[0]["operation"] == "BULK_UPSERT"
+
 
 @pytest.mark.asyncio
 async def test_report_node_synthesis():
@@ -73,13 +76,24 @@ async def test_report_node_synthesis():
         "company_name": "Apple Inc.",
         "fiscal_year": 2025,
         "research_data": {"company_profile": "Leading Tech Company"},
-        "analysis_results": {"profit_margin_pct": 25.0, "risk_rating": "Low Risk", "financial_risk_score": 15.0},
-        "verified_claims": [{"claim": "Revenue verified", "source": "10-K", "status": "VERIFIED", "confidence_score": 0.98}],
+        "analysis_results": {
+            "profit_margin_pct": 25.0,
+            "risk_rating": "Low Risk",
+            "financial_risk_score": 15.0,
+        },
+        "verified_claims": [
+            {
+                "claim": "Revenue verified",
+                "source": "10-K",
+                "status": "VERIFIED",
+                "confidence_score": 0.98,
+            }
+        ],
         "graph_operations": [{"nodes_committed": 2, "relationships_committed": 1}],
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
 
     res = await report_node(state)
@@ -88,6 +102,7 @@ async def test_report_node_synthesis():
     assert "executive_summary" in rep
     assert "risk_matrix" in rep
     assert rep["status"] == "FINALIZED"
+
 
 @pytest.mark.asyncio
 async def test_full_6_agent_swarm_workflow_with_checkpointer():
@@ -107,7 +122,7 @@ async def test_full_6_agent_swarm_workflow_with_checkpointer():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
 
     final_state = await app.ainvoke(initial_state, config=config)

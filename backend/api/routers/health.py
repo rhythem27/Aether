@@ -8,12 +8,16 @@ from backend.db.redis import check_redis_health
 
 router = APIRouter(tags=["health"])
 
+
 class ServiceHealthStatus(BaseModel):
     status: str
     version: str
     services: dict
 
-@router.get("/health", response_model=ServiceHealthStatus, status_code=status.HTTP_200_OK)
+
+@router.get(
+    "/health", response_model=ServiceHealthStatus, status_code=status.HTTP_200_OK
+)
 async def get_health_status():
     qdrant_ok = await check_qdrant_health()
     neo4j_ok = await check_neo4j_health()
@@ -32,8 +36,9 @@ async def get_health_status():
     return ServiceHealthStatus(
         status="healthy" if all_healthy else "degraded",
         version=settings.VERSION,
-        services=services_status
+        services=services_status,
     )
+
 
 @router.get("/ready", status_code=status.HTTP_200_OK)
 async def readiness_probe():

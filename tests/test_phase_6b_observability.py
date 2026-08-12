@@ -8,12 +8,14 @@ from backend.core.observability import observe_agent
 
 client = TestClient(app)
 
+
 def test_prometheus_metrics_endpoint():
     response = client.get("/metrics")
     assert response.status_code == 200
     text = response.text
     assert "aether_research_jobs_total" in text
     assert "aether_active_research_jobs" in text
+
 
 @pytest.mark.asyncio
 async def test_high_risk_validator_node_pass():
@@ -29,12 +31,13 @@ async def test_high_risk_validator_node_pass():
         "report_sections": {},
         "human_approval": True,
         "errors": [],
-        "token_usage": {}
+        "token_usage": {},
     }
 
     res = await high_risk_validator_node(state)
     assert res["human_approval"] is True
     assert len(res["messages"]) == 1
+
 
 @pytest.mark.asyncio
 async def test_observe_agent_decorator():

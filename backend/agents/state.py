@@ -2,8 +2,10 @@ import operator
 from typing import Annotated, Any, Dict, List, Optional, Sequence, TypedDict
 from langchain_core.messages import BaseMessage
 
+
 class AgentState(TypedDict):
     """LangGraph central state dictionary for multi-agent financial research workflows."""
+
     messages: Annotated[Sequence[BaseMessage], operator.add]
     company_ticker: str
     company_name: Optional[str]

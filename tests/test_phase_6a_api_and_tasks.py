@@ -1,10 +1,10 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
-from backend.models.research import ResearchRequest, ResearchResponse, JobStatus
+from backend.models.research import ResearchRequest
 
 client = TestClient(app)
+
 
 def test_research_models():
     req = ResearchRequest(target_company="AAPL", research_depth="deep")
@@ -12,12 +12,13 @@ def test_research_models():
     assert req.research_depth == "deep"
     assert "sec_edgar" in req.data_sources
 
+
 def test_initiate_deep_dive_api():
     payload = {
         "target_company": "NVDA",
         "research_depth": "standard",
         "focus_areas": ["financials", "risk"],
-        "data_sources": ["sec_edgar", "news"]
+        "data_sources": ["sec_edgar", "news"],
     }
     response = client.post("/api/v1/research/deep-dive", json=payload)
     assert response.status_code == 202
@@ -42,6 +43,7 @@ def test_initiate_deep_dive_api():
     jobs = list_resp.json()
     assert len(jobs) > 0
     assert any(j["job_id"] == job_id for j in jobs)
+
 
 def test_websocket_streaming_endpoint():
     # 1. Enqueue a job

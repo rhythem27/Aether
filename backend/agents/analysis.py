@@ -6,6 +6,7 @@ from backend.agents.state import AgentState
 
 logger = structlog.get_logger(__name__)
 
+
 async def analysis_node(state: AgentState) -> Dict[str, Any]:
     """Financial Analysis Agent: Computes valuation models, growth rates, profit margins, and risk scores."""
     ticker = state.get("company_ticker", "AAPL")
@@ -26,7 +27,9 @@ async def analysis_node(state: AgentState) -> Dict[str, Any]:
         ev_to_ebitda_est = 22.1
 
         # 2. Financial Risk Scoring (0-100 scale)
-        risk_score = 15.0 if profit_margin > 20 else (35.0 if profit_margin > 10 else 65.0)
+        risk_score = (
+            15.0 if profit_margin > 20 else (35.0 if profit_margin > 10 else 65.0)
+        )
 
         analysis_results = {
             "ticker": ticker,
@@ -37,17 +40,18 @@ async def analysis_node(state: AgentState) -> Dict[str, Any]:
             "pe_ratio": pe_ratio_est,
             "ev_ebitda": ev_to_ebitda_est,
             "financial_risk_score": risk_score,
-            "risk_rating": "Low Risk" if risk_score < 30 else ("Moderate Risk" if risk_score < 60 else "High Risk")
+            "risk_rating": (
+                "Low Risk"
+                if risk_score < 30
+                else ("Moderate Risk" if risk_score < 60 else "High Risk")
+            ),
         }
 
         ai_msg = AIMessage(
             content=f"[Analysis Agent] Financial analysis completed for {ticker}. Margin: {profit_margin}%, P/E: {pe_ratio_est}, Risk Score: {risk_score}/100 ({analysis_results['risk_rating']})."
         )
 
-        return {
-            "analysis_results": analysis_results,
-            "messages": [ai_msg]
-        }
+        return {"analysis_results": analysis_results, "messages": [ai_msg]}
 
     except Exception as e:
         err_msg = f"Analysis Agent failed for {ticker}: {str(e)}"
@@ -55,5 +59,5 @@ async def analysis_node(state: AgentState) -> Dict[str, Any]:
         errors.append(err_msg)
         return {
             "errors": errors,
-            "messages": [AIMessage(content=f"[Analysis Agent Error] {err_msg}")]
+            "messages": [AIMessage(content=f"[Analysis Agent Error] {err_msg}")],
         }
