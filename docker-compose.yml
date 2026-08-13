@@ -1,49 +1,7 @@
 version: "3.9"
+# Aether Infrastructure Dependencies Docker Setup
 
 services:
-  api:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.api
-    ports:
-      - "8000:8000"
-    environment:
-      - QDRANT_URL=http://qdrant:6333
-      - NEO4J_URI=bolt://neo4j:7687
-      - REDIS_URL=redis://redis:6379
-      - LANGFUSE_HOST=http://langfuse:3000
-    env_file: .env
-    depends_on:
-      - qdrant
-      - neo4j
-      - redis
-      - postgres
-    volumes:
-      - ./backend:/app/backend
-    command: uvicorn backend.api.main:app --host 0.0.0.0 --reload
-
-  worker:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.worker
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    env_file: .env
-    depends_on:
-      - redis
-      - qdrant
-      - neo4j
-    command: celery -A backend.workers.research_tasks worker --loglevel=info --concurrency=4
-
-  mcp-sec-edgar:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.mcp-server
-    environment:
-      - MCP_SERVER_NAME=sec-edgar
-    env_file: .env
-
   qdrant:
     image: qdrant/qdrant:latest
     ports:
@@ -74,6 +32,8 @@ services:
       - POSTGRES_DB=aether
       - POSTGRES_USER=aether
       - POSTGRES_PASSWORD=aether
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -85,6 +45,8 @@ services:
       - DATABASE_URL=postgresql://aether:aether@postgres:5432/langfuse
       - NEXTAUTH_SECRET=secret
       - SALT=salt
+    depends_on:
+      - postgres
 
   prometheus:
     image: prom/prometheus:latest
