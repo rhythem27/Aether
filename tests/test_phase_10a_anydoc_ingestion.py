@@ -1,10 +1,8 @@
-import os
 import pytest
-from pathlib import Path
 from fastapi.testclient import TestClient
 
 from backend.rag.anydoc_parser import AnyDocParser
-from backend.rag.chunking import DocumentType, TokenAwareChunker, DocumentParser
+from backend.rag.chunking import DocumentType
 from backend.scripts.ingest_required_docs import find_required_docs_dir, process_and_ingest
 from backend.api.main import app
 

@@ -1,12 +1,9 @@
 import os
 import re
-import json
 import base64
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional
 import httpx
 import structlog
-from pydantic import BaseModel, Field
 
 from backend.core.config import settings
 from backend.rag.chunking import DocumentType, DocumentElement, ParsedDocument

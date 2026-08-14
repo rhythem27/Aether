@@ -7,10 +7,9 @@ chunks content via TokenAwareChunker, and indexes vectors into Qdrant.
 
 import argparse
 import asyncio
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import structlog
 

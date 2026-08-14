@@ -1,7 +1,6 @@
 import pytest
 from backend.rag.graphrag import (
     EntityExtractor,
-    EntityResolver,
     EntityType,
     RelationType,
     FinancialGraphRAG,
