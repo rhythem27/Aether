@@ -6,7 +6,8 @@ import structlog
 
 from backend.api.dependencies import get_qdrant_db_client
 from backend.db.qdrant import init_qdrant_collection
-from backend.rag.chunking import DocumentParser, TokenAwareChunker
+from backend.rag.anydoc_parser import AnyDocParser
+from backend.rag.chunking import TokenAwareChunker
 from backend.rag.retriever import HybridRetriever, QueryResultPassage
 
 logger = structlog.get_logger(__name__)
@@ -37,7 +38,7 @@ class DocumentQueryResponse(BaseModel):
     passages: List[QueryResultPassage]
 
 
-parser = DocumentParser()
+parser = AnyDocParser()
 chunker = TokenAwareChunker(max_tokens=512, overlap=50)
 
 

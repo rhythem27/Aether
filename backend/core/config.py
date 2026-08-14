@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: Optional[str] = None
     COHERE_API_KEY: Optional[str] = None
 
+    # Firecrawl AnyDoc Parsing API
+    FIRECRAWL_API_KEY: Optional[str] = None
+    FIRECRAWL_API_URL: str = "https://api.firecrawl.dev/v1"
+
     # MCP Data Source API Keys
     EDGAR_API_KEY: str = "Aether AI research@aether.ai"
     CRUNCHBASE_KEY: Optional[str] = None

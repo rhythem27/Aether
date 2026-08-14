@@ -141,46 +141,43 @@ async def bulk_write_nodes_and_relationships(
 
     written_count = 0
 
-    async with d.session() as session:
-        # Upsert nodes in batch per label
-        for label, label_nodes in nodes_by_label.items():
-            cypher_nodes_query = f"""
-            UNWIND $nodes AS node
-            MERGE (n:`{label}` {{id: node.id}})
-            SET n += node.properties, n.name = node.name
-            """
-            try:
+    try:
+        async with d.session() as session:
+            # Upsert nodes in batch per label
+            for label, label_nodes in nodes_by_label.items():
+                cypher_nodes_query = f"""
+                UNWIND $nodes AS node
+                MERGE (n:`{label}` {{id: node.id}})
+                SET n += node.properties, n.name = node.name
+                """
                 await session.run(cypher_nodes_query, parameters={"nodes": label_nodes})
                 written_count += len(label_nodes)
-            except Exception as e:
-                logger.error("neo4j_bulk_nodes_write_failed", label=label, error=str(e))
-                raise
 
-        # Upsert relationships in batch
-        if relationships:
-            rel_by_type: Dict[str, List[Dict[str, Any]]] = {}
-            for rel in relationships:
-                rel_type = rel.get("rel_type", "RELATED_TO")
-                rel_by_type.setdefault(rel_type, []).append(rel)
+            # Upsert relationships in batch
+            if relationships:
+                rel_by_type: Dict[str, List[Dict[str, Any]]] = {}
+                for rel in relationships:
+                    rel_type = rel.get("rel_type", "RELATED_TO")
+                    rel_by_type.setdefault(rel_type, []).append(rel)
 
-            for rel_type, type_rels in rel_by_type.items():
-                cypher_rel_query = f"""
-                UNWIND $relationships AS rel
-                MATCH (source {{id: rel.source_id}})
-                MATCH (target {{id: rel.target_id}})
-                MERGE (source)-[r:`{rel_type}`]->(target)
-                SET r += rel.properties
-                """
-                try:
+                for rel_type, type_rels in rel_by_type.items():
+                    cypher_rel_query = f"""
+                    UNWIND $relationships AS rel
+                    MATCH (source {{id: rel.source_id}})
+                    MATCH (target {{id: rel.target_id}})
+                    MERGE (source)-[r:`{rel_type}`]->(target)
+                    SET r += rel.properties
+                    """
                     await session.run(
                         cypher_rel_query, parameters={"relationships": type_rels}
                     )
                     written_count += len(type_rels)
-                except Exception as e:
-                    logger.error(
-                        "neo4j_bulk_rel_write_failed", rel_type=rel_type, error=str(e)
-                    )
-                    raise
+    except Exception as e:
+        logger.warning("neo4j_connection_failed_falling_back_to_in_memory", error=str(e))
+        mem_driver = InMemoryNeo4jDriver()
+        return await bulk_write_nodes_and_relationships(
+            nodes=nodes, relationships=relationships, driver=mem_driver
+        )
 
     logger.info("neo4j_bulk_write_complete", total_elements=written_count)
     return written_count

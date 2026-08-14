@@ -21,6 +21,10 @@ class EntityType(str, Enum):
     FILING = "Filing"
     LAWSUIT = "Lawsuit"
     COMMUNITY = "Community"
+    EXECUTIVE = "Executive"
+    DISCLOSURE = "Disclosure"
+    METRIC = "Metric"
+    RISK_FACTOR = "RiskFactor"
 
 
 class RelationType(str, Enum):
@@ -31,6 +35,10 @@ class RelationType(str, Enum):
     FILED = "FILED"
     TARGET_OF = "TARGET_OF"
     BELONGS_TO = "BELONGS_TO"
+    FILED_DISCLOSURE = "FILED_DISCLOSURE"
+    DISCLOSED_RISK = "DISCLOSED_RISK"
+    REPORTED_METRIC = "REPORTED_METRIC"
+    DEPENDS_ON = "DEPENDS_ON"
 
 
 class EntityNode(BaseModel):
@@ -208,6 +216,44 @@ class EntityExtractor:
                         rel_type=RelationType.COMPETES_WITH,
                     )
                 )
+
+        # Financial Metric Pattern (e.g., Revenue of $100M, Net Income $50 million)
+        metric_matches = re.findall(
+            r"([A-Z][A-Za-z0-9\s,\.]+?)\s+(?:reported|generated|posted)\s+(revenue|net income|operating margin|gross margin)\s+(?:of\s+)?(\$?\d+(?:\.\d+)?\s*(?:billion|million|B|M|%)?)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        for comp, metric_name, val in metric_matches:
+            comp_name = comp.strip()
+            metric_val = f"{metric_name.strip()}: {val.strip()}"
+            if len(comp_name) > 2:
+                comp_id = EntityResolver.generate_entity_id(comp_name, EntityType.COMPANY)
+                metric_id = EntityResolver.generate_entity_id(metric_val, EntityType.METRIC)
+
+                nodes.append(EntityNode(id=comp_id, name=comp_name, label=EntityType.COMPANY))
+                nodes.append(EntityNode(id=metric_id, name=metric_val, label=EntityType.METRIC))
+                relationships.append(
+                    RelationshipTriple(
+                        source_id=comp_id,
+                        target_id=metric_id,
+                        rel_type=RelationType.REPORTED_METRIC,
+                    )
+                )
+
+        # Risk Factor Pattern
+        if "risk" in text.lower() or "threat" in text.lower() or "lawsuit" in text.lower():
+            for line in text.splitlines():
+                line_lower = line.lower()
+                if any(kw in line_lower for kw in ["risk of", "adversely affect", "litigation", "cybersecurity", "regulatory"]):
+                    risk_name = line.strip()[:100]
+                    risk_id = EntityResolver.generate_entity_id(risk_name, EntityType.RISK_FACTOR)
+                    nodes.append(EntityNode(id=risk_id, name=risk_name, label=EntityType.RISK_FACTOR))
+
+        # Filing Pattern (Form 10-K / 10-Q)
+        filing_matches = re.findall(r"(Form\s+10-K|Form\s+10-Q|10-K|10-Q)", text, flags=re.IGNORECASE)
+        for f_name in set(filing_matches):
+            f_id = EntityResolver.generate_entity_id(f_name, EntityType.FILING)
+            nodes.append(EntityNode(id=f_id, name=f_name.upper(), label=EntityType.FILING))
 
         raw_graph = ExtractedGraphData(nodes=nodes, relationships=relationships)
         return EntityResolver.resolve_and_deduplicate(raw_graph)

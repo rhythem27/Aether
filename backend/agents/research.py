@@ -61,18 +61,28 @@ async def research_node(state: AgentState) -> Dict[str, Any]:
             sentiment_fn, articles=recent_news
         )
 
-        # 4. Hybrid Retriever RAG passages
+        # 4. Hybrid Vector + GraphRAG RRF passages
         passages = []
         try:
-            retriever = HybridRetriever()
-            retrieved = await retriever.search(
+            from backend.rag.graphrag import FinancialGraphRAG
+            graph_rag = FinancialGraphRAG()
+            fused_results = await graph_rag.query_hybrid_rrf(
                 query=f"{ticker} financial revenue growth risk factors",
-                top_k=3,
-                company_ticker=ticker,
+                top_k=5,
             )
-            passages = [p.model_dump() for p in retrieved]
+            passages = [p.model_dump() for p in fused_results if hasattr(p, "model_dump")]
         except Exception as rag_err:
-            logger.warning("research_rag_retrieval_warn", error=str(rag_err))
+            logger.warning("research_graphrag_retrieval_warn", error=str(rag_err))
+            try:
+                retriever = HybridRetriever()
+                retrieved = await retriever.search(
+                    query=f"{ticker} financial revenue growth risk factors",
+                    top_k=3,
+                    company_ticker=ticker,
+                )
+                passages = [p.model_dump() for p in retrieved]
+            except Exception as fallback_err:
+                logger.warning("research_rag_fallback_warn", error=str(fallback_err))
 
         research_data.update(
             {

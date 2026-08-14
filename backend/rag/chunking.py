@@ -51,20 +51,16 @@ class ParsedDocument(BaseModel):
 
 
 class DocumentParser:
-    """Multi-Format Document Parsing Engine supporting PDF, HTML, TXT, and DOCX."""
+    """Multi-Format Document Parsing Engine supporting PDF, HTML, TXT, DOCX, and AnyDoc formats."""
+
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):
+        from backend.rag.anydoc_parser import AnyDocParser
+        self.anydoc_parser = AnyDocParser(api_key=api_key, api_url=api_url)
 
     @staticmethod
     def detect_format(file_path: str) -> DocumentType:
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext == ".pdf":
-            return DocumentType.PDF
-        elif ext in [".html", ".htm"]:
-            return DocumentType.HTML
-        elif ext == ".docx":
-            return DocumentType.DOCX
-        elif ext in [".txt", ".log", ".csv", ".md"]:
-            return DocumentType.TXT
-        return DocumentType.UNKNOWN
+        from backend.rag.anydoc_parser import AnyDocParser
+        return AnyDocParser.detect_format(file_path)
 
     def parse(
         self,
@@ -74,130 +70,13 @@ class DocumentParser:
         fiscal_year: Optional[int] = None,
         use_unstructured: bool = False,
     ) -> ParsedDocument:
-        doc_type = self.detect_format(file_path)
-        logger.info("parsing_document", file_path=file_path, doc_type=doc_type.value)
-
-        text_content = ""
-        elements: List[DocumentElement] = []
-
-        if content:
-            raw_str = content.decode("utf-8", errors="ignore")
-        elif os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                raw_str = f.read().decode("utf-8", errors="ignore")
-        else:
-            raw_str = ""
-
-        # Attempt unstructured parsing only if explicitly requested or if file is PDF
-        parsed_via_unstructured = False
-        if use_unstructured or doc_type == DocumentType.PDF:
-            try:
-                from unstructured.partition.auto import partition
-
-                if os.path.exists(file_path):
-                    raw_elements = partition(filename=file_path)
-                    if raw_elements:
-                        current_section = None
-                        for idx, elem in enumerate(raw_elements):
-                            elem_type = getattr(elem, "category", "text").lower()
-                            elem_text = str(elem).strip()
-                            page_num = (
-                                getattr(
-                                    getattr(elem, "metadata", None), "page_number", 1
-                                )
-                                or 1
-                            )
-
-                            if elem_type in ["title", "header", "heading"]:
-                                current_section = elem_text
-
-                            table_data = []
-                            if elem_type == "table":
-                                html_table = getattr(
-                                    getattr(elem, "metadata", None), "text_as_html", ""
-                                )
-                                table_data = [
-                                    {"raw_html": html_table, "text": elem_text}
-                                ]
-
-                            elements.append(
-                                DocumentElement(
-                                    element_type=elem_type,
-                                    text=elem_text,
-                                    page_number=page_num,
-                                    section_heading=current_section,
-                                    metadata=(
-                                        {"table_data": table_data} if table_data else {}
-                                    ),
-                                )
-                            )
-                        text_content = "\n\n".join(e.text for e in elements)
-                        parsed_via_unstructured = True
-            except Exception as err:
-                logger.warning(
-                    "unstructured_partition_fallback",
-                    file_path=file_path,
-                    error=str(err),
-                )
-
-        if not parsed_via_unstructured:
-            # High-speed fallback parser logic
-            text_content = raw_str
-            elements = self._fallback_parse(raw_str, doc_type)
-
-        return ParsedDocument(
-            filename=os.path.basename(file_path),
-            doc_type=doc_type,
-            elements=elements,
-            raw_text=text_content,
+        return self.anydoc_parser.parse(
+            file_path=file_path,
+            content=content,
+            company_ticker=company_ticker,
+            fiscal_year=fiscal_year,
+            force_local=use_unstructured,
         )
-
-    def _fallback_parse(
-        self, text: str, doc_type: DocumentType
-    ) -> List[DocumentElement]:
-        elements = []
-        lines = text.splitlines()
-        current_section = None
-
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
-                continue
-
-            # Detect title / heading lines
-            if stripped.startswith("#") or (len(stripped) < 80 and stripped.isupper()):
-                current_section = stripped.lstrip("#").strip()
-                elements.append(
-                    DocumentElement(
-                        element_type="title",
-                        text=stripped,
-                        page_number=1,
-                        section_heading=current_section,
-                    )
-                )
-            # Detect table structure (e.g. pipe-delimited or tab-separated matrix)
-            elif "|" in stripped or "\t" in stripped:
-                cols = [c.strip() for c in re.split(r"[|\t]", stripped) if c.strip()]
-                elements.append(
-                    DocumentElement(
-                        element_type="table",
-                        text=stripped,
-                        page_number=1,
-                        section_heading=current_section,
-                        metadata={"table_matrix": cols},
-                    )
-                )
-            else:
-                elements.append(
-                    DocumentElement(
-                        element_type="text",
-                        text=stripped,
-                        page_number=1,
-                        section_heading=current_section,
-                    )
-                )
-
-        return elements
 
 
 class TokenAwareChunker:
