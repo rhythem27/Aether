@@ -27,6 +27,8 @@ class EntityType(str, Enum):
     DISCLOSURE = "Disclosure"
     METRIC = "Metric"
     RISK_FACTOR = "RiskFactor"
+    EXPERT = "Expert"
+    OPINION = "Opinion"
 
 
 class RelationType(str, Enum):
@@ -41,6 +43,10 @@ class RelationType(str, Enum):
     DISCLOSED_RISK = "DISCLOSED_RISK"
     REPORTED_METRIC = "REPORTED_METRIC"
     DEPENDS_ON = "DEPENDS_ON"
+    EXPRESSED_OPINION_ON = "EXPRESSED_OPINION_ON"
+    CONTRADICTS = "CONTRADICTS"
+    CONFIRMS = "CONFIRMS"
+
 
 
 class EntityNode(BaseModel):
@@ -140,8 +146,12 @@ class EntityExtractor:
     """Structured entity and relationship extractor for financial documents."""
 
     def extract_from_text(self, text: str) -> ExtractedGraphData:
+        from backend.rag.sentiment import get_financial_sentiment
         nodes: List[EntityNode] = []
         relationships: List[RelationshipTriple] = []
+
+        sent_info = get_financial_sentiment(text)
+        sent_score = sent_info.get("overall_score", 0.0)
 
         # Acquisition Pattern
         acquisition_matches = re.findall(
@@ -159,7 +169,10 @@ class EntityExtractor:
                 nodes.append(EntityNode(id=t_id, name=t_name, label=EntityType.COMPANY))
                 relationships.append(
                     RelationshipTriple(
-                        source_id=b_id, target_id=t_id, rel_type=RelationType.ACQUIRED
+                        source_id=b_id,
+                        target_id=t_id,
+                        rel_type=RelationType.ACQUIRED,
+                        properties={"sentiment_score": sent_score},
                     )
                 )
 
@@ -190,6 +203,7 @@ class EntityExtractor:
                         source_id=inv_id,
                         target_id=comp_id,
                         rel_type=RelationType.INVESTED_IN,
+                        properties={"sentiment_score": sent_score},
                     )
                 )
 
@@ -216,6 +230,7 @@ class EntityExtractor:
                         source_id=c1_id,
                         target_id=c2_id,
                         rel_type=RelationType.COMPETES_WITH,
+                        properties={"sentiment_score": sent_score},
                     )
                 )
 
@@ -239,6 +254,7 @@ class EntityExtractor:
                         source_id=comp_id,
                         target_id=metric_id,
                         rel_type=RelationType.REPORTED_METRIC,
+                        properties={"sentiment_score": sent_score},
                     )
                 )
 
@@ -258,6 +274,7 @@ class EntityExtractor:
             nodes.append(EntityNode(id=f_id, name=f_name.upper(), label=EntityType.FILING))
 
         raw_graph = ExtractedGraphData(nodes=nodes, relationships=relationships)
+
         return EntityResolver.resolve_and_deduplicate(raw_graph)
 
 

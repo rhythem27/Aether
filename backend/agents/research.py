@@ -86,6 +86,18 @@ async def research_node(state: AgentState) -> Dict[str, Any]:
             except Exception as fallback_err:
                 logger.warning("research_rag_fallback_warn", error=str(fallback_err))
 
+        # 5. Qualitative Expert Call Transcript Passages
+        expert_transcripts = research_data.get("expert_transcripts", [])
+        qualitative_passages = []
+        if expert_transcripts:
+            try:
+                from backend.rag.transcripts import query_qualitative_transcript_passages
+                for tr in expert_transcripts:
+                    qual_p = await query_qualitative_transcript_passages(tr, speaker_role_filter="executive")
+                    qualitative_passages.extend(qual_p)
+            except Exception as tr_err:
+                logger.warning("research_transcript_passages_warn", error=str(tr_err))
+
         research_data.update(
             {
                 "ticker": ticker,
@@ -97,14 +109,16 @@ async def research_node(state: AgentState) -> Dict[str, Any]:
                 "recent_news": recent_news,
                 "news_sentiment": news_sentiment,
                 "retrieved_passages": passages,
+                "qualitative_passages": qualitative_passages,
             }
         )
 
         ai_msg = AIMessage(
-            content=f"[Research Agent] Dynamically gathered MCP data for {ticker}. SEC filings: {len(filings)}, News: {len(recent_news)}, Sentiment: {news_sentiment.get('sentiment')}."
+            content=f"[Research Agent] Dynamically gathered MCP data for {ticker}. SEC filings: {len(filings)}, News: {len(recent_news)}, Sentiment: {news_sentiment.get('sentiment')}, Qualitative Passages: {len(qualitative_passages)}."
         )
 
         return {"research_data": research_data, "messages": [ai_msg]}
+
 
     except Exception as e:
         err_msg = f"Research Agent failed for {ticker}: {str(e)}"

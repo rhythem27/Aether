@@ -101,11 +101,13 @@ class HybridRetriever:
         entity_ids: Optional[List[str]] = None,
         community_tag: Optional[str] = None,
         pagerank_weights: Optional[Dict[str, float]] = None,
+        expanded_query: Optional[str] = None,
+        synonyms: Optional[List[str]] = None,
         subgraph_expand: bool = False,
         neo4j_driver: Optional[Any] = None,
         collection_name: str = FINANCIAL_COLLECTION_NAME,
     ) -> List[QueryResultPassage]:
-        """Perform dense vector search with payload filters (entity_ids, community_tag) and PageRank centrality-weighted BM25 reranking."""
+        """Perform dense vector search with payload filters (entity_ids, community_tag), synonym query expansion, and PageRank centrality-weighted BM25 reranking."""
         query_vector = await self.embedding_service.embed_query(query)
 
         target_entity_ids = list(entity_ids) if entity_ids else []
@@ -192,20 +194,24 @@ class HybridRetriever:
         if not search_results:
             return []
 
-        # Perform Reciprocal Rank Fusion (RRF) & Sparse Keyword Reranking with PageRank Centrality Weighting
+        # Perform Reciprocal Rank Fusion (RRF) & Sparse Keyword Reranking with Dual-Path Synonym Expansion & PageRank Centrality Weighting
         passages: List[QueryResultPassage] = []
-        query_words = set(re.findall(r"\w+", query.lower()))
+
+        # Build expanded BM25 term set
+        query_text_for_bm25 = f"{query} {expanded_query or ''} {' '.join(synonyms or [])}"
+        query_words = set(re.findall(r"\w+", query_text_for_bm25.lower()))
 
         for hit in search_results:
             payload = getattr(hit, "payload", {}) or {}
             chunk_text = payload.get("text", "")
             chunk_eids = payload.get("entity_ids", [])
 
-            # Compute sparse keyword overlap score
+            # Compute sparse keyword overlap score across expanded query words
             text_words = set(re.findall(r"\w+", chunk_text.lower()))
             overlap = len(query_words.intersection(text_words)) / max(
                 1, len(query_words)
             )
+
 
             # Hybrid combined score (80% dense vector similarity + 20% BM25 keyword overlap)
             dense_score = float(getattr(hit, "score", 0.0))

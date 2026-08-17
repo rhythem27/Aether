@@ -9,6 +9,7 @@ from backend.api.routers.documents import router as documents_router
 from backend.api.routers.graph import router as graph_router
 from backend.api.routers.research import router as research_router
 from backend.api.routers.reports import router as reports_router
+from backend.api.routers.analysis import router as analysis_router
 from backend.api.routers.websocket import router as websocket_router
 from backend.db.qdrant import close_qdrant_client
 from backend.db.neo4j import close_neo4j_driver
@@ -58,6 +59,7 @@ app.include_router(documents_router, prefix=settings.API_V1_STR)
 app.include_router(graph_router, prefix=settings.API_V1_STR)
 app.include_router(research_router, prefix=settings.API_V1_STR)
 app.include_router(reports_router, prefix=settings.API_V1_STR)
+app.include_router(analysis_router, prefix=settings.API_V1_STR)
 app.include_router(websocket_router, prefix=settings.API_V1_STR)
 
 

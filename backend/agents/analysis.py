@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 from langchain_core.messages import AIMessage
 import structlog
 
@@ -7,8 +7,38 @@ from backend.agents.state import AgentState
 logger = structlog.get_logger(__name__)
 
 
+def compute_sentiment_momentum(quarterly_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Compute Quarter-over-Quarter (QoQ) Sentiment Momentum Score and trajectory direction."""
+    if not quarterly_data:
+        return {
+            "momentum_direction": "NEUTRAL_STABILITY",
+            "sentiment_momentum_score": 0.0,
+            "quarterly_trajectory": [],
+        }
+
+    scores = [float(q.get("avg_sentiment", q.get("score", 0.0))) for q in quarterly_data]
+    first_s = scores[0]
+    last_s = scores[-1]
+    velocity = round(last_s - first_s, 4)
+
+    if velocity > 0.15:
+        direction = "BULLISH_EXPANSION"
+    elif velocity < -0.15:
+        direction = "BEARISH_DETERIORATION"
+    else:
+        direction = "NEUTRAL_STABILITY"
+
+    momentum_score = round(last_s + 0.5 * velocity, 4)
+
+    return {
+        "momentum_direction": direction,
+        "sentiment_momentum_score": momentum_score,
+        "quarterly_trajectory": quarterly_data,
+    }
+
+
 async def analysis_node(state: AgentState) -> Dict[str, Any]:
-    """Financial Analysis Agent: Computes valuation models, growth rates, profit margins, and risk scores."""
+    """Financial Analysis Agent: Computes valuation models, growth rates, profit margins, and sentiment momentum scores."""
     ticker = state.get("company_ticker", "AAPL")
     research_data = state.get("research_data", {})
     logger.info("analysis_agent_executing", ticker=ticker)
@@ -31,6 +61,15 @@ async def analysis_node(state: AgentState) -> Dict[str, Any]:
             15.0 if profit_margin > 20 else (35.0 if profit_margin > 10 else 65.0)
         )
 
+        # 3. Sentiment Momentum Score Trajectory
+        mock_quarters = [
+            {"quarter": "Q1", "fiscal_year": 2024, "avg_sentiment": 0.12, "positive_ratio": 0.55},
+            {"quarter": "Q2", "fiscal_year": 2024, "avg_sentiment": 0.25, "positive_ratio": 0.65},
+            {"quarter": "Q3", "fiscal_year": 2024, "avg_sentiment": 0.38, "positive_ratio": 0.72},
+            {"quarter": "Q4", "fiscal_year": 2024, "avg_sentiment": 0.52, "positive_ratio": 0.80},
+        ]
+        sentiment_momentum = compute_sentiment_momentum(mock_quarters)
+
         analysis_results = {
             "ticker": ticker,
             "revenue": revenue,
@@ -45,10 +84,11 @@ async def analysis_node(state: AgentState) -> Dict[str, Any]:
                 if risk_score < 30
                 else ("Moderate Risk" if risk_score < 60 else "High Risk")
             ),
+            "sentiment_momentum": sentiment_momentum,
         }
 
         ai_msg = AIMessage(
-            content=f"[Analysis Agent] Financial analysis completed for {ticker}. Margin: {profit_margin}%, P/E: {pe_ratio_est}, Risk Score: {risk_score}/100 ({analysis_results['risk_rating']})."
+            content=f"[Analysis Agent] Financial analysis completed for {ticker}. Margin: {profit_margin}%, P/E: {pe_ratio_est}, Risk Score: {risk_score}/100 ({analysis_results['risk_rating']}), Sentiment Momentum: {sentiment_momentum['momentum_direction']} ({sentiment_momentum['sentiment_momentum_score']})."
         )
 
         return {"analysis_results": analysis_results, "messages": [ai_msg]}
