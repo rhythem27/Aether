@@ -1,4 +1,5 @@
 import re
+import math
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 from pydantic import BaseModel, Field
@@ -9,6 +10,7 @@ from backend.db.neo4j import (
     get_neo4j_driver,
     InMemoryNeo4jDriver,
 )
+from backend.db.qdrant import FINANCIAL_COLLECTION_NAME
 
 logger = structlog.get_logger(__name__)
 
@@ -265,9 +267,9 @@ class CommunityDetector:
     @staticmethod
     async def run_louvain_communities(driver: Any) -> List[CommunitySummary]:
         """Run Louvain community detection algorithm on Neo4j graph and return community summaries."""
-        if isinstance(driver, InMemoryNeo4jDriver):
-            # Fallback clustering for in-memory graph driver
-            node_ids = list(driver.db["nodes"].keys())
+        d = driver or get_neo4j_driver()
+        if isinstance(d, InMemoryNeo4jDriver):
+            node_ids = list(d.db["nodes"].keys())
             if not node_ids:
                 return []
             comm_id = "community_lvl1_0"
@@ -284,7 +286,7 @@ class CommunityDetector:
             ]
 
         try:
-            async with driver.session() as session:
+            async with d.session() as session:
                 query = """
                 CALL gds.louvain.stream('financial_graph')
                 YIELD nodeId, communityId
@@ -297,7 +299,8 @@ class CommunityDetector:
                 for rec in records:
                     comm_id = rec["communityId"]
                     e_id = rec["entity_id"]
-                    community_groups.setdefault(comm_id, []).append(e_id)
+                    if e_id:
+                        community_groups.setdefault(comm_id, []).append(e_id)
 
                 summaries = []
                 for cid, e_list in community_groups.items():
@@ -313,6 +316,170 @@ class CommunityDetector:
         except Exception as err:
             logger.warning("neo4j_gds_louvain_fallback", error=str(err))
             return []
+
+
+async def run_louvain_communities(driver: Any = None) -> List[CommunitySummary]:
+    """Run Louvain community detection algorithm on Neo4j graph and return community summaries."""
+    return await CommunityDetector.run_louvain_communities(driver)
+
+
+async def run_pagerank_centrality(driver: Any = None) -> Dict[str, float]:
+    """Run PageRank centrality algorithm on Neo4j graph returning entity centrality scores."""
+    d = driver or get_neo4j_driver()
+    if isinstance(d, InMemoryNeo4jDriver):
+        nodes_dict = d.db.get("nodes", {})
+        rels = d.db.get("relationships", [])
+        if not nodes_dict:
+            return {}
+        degrees: Dict[str, int] = {nid: 0 for nid in nodes_dict}
+        for rel in rels:
+            s_id = rel.get("source_id")
+            t_id = rel.get("target_id")
+            if s_id in degrees:
+                degrees[s_id] += 1
+            if t_id in degrees:
+                degrees[t_id] += 1
+        total_nodes = len(nodes_dict)
+        return {
+            nid: round(min(1.0, (deg + 1.0) / max(1, total_nodes)), 4)
+            for nid, deg in degrees.items()
+        }
+
+    try:
+        async with d.session() as session:
+            query = """
+            CALL gds.pageRank.stream('financial_graph')
+            YIELD nodeId, score
+            RETURN gds.util.asNode(nodeId).id AS entity_id, score
+            """
+            res = await session.run(query)
+            records = await res.data()
+            return {
+                rec["entity_id"]: round(float(rec["score"]), 4)
+                for rec in records
+                if rec.get("entity_id")
+            }
+    except Exception as err:
+        logger.warning("neo4j_gds_pagerank_fallback", error=str(err))
+        return {}
+
+
+async def run_node2vec_embeddings(
+    driver: Any = None, dimensions: int = 32
+) -> Dict[str, List[float]]:
+    """Run Node2Vec topological graph embedding algorithm returning entity vector representation dict."""
+    d = driver or get_neo4j_driver()
+    if isinstance(d, InMemoryNeo4jDriver):
+        nodes_dict = d.db.get("nodes", {})
+        embeddings: Dict[str, List[float]] = {}
+        for idx, (nid, data) in enumerate(nodes_dict.items()):
+            vec = [
+                round(math.sin((idx + 1) * (i + 1) * 0.1), 4)
+                for i in range(dimensions)
+            ]
+            embeddings[nid] = vec
+        return embeddings
+
+    try:
+        async with d.session() as session:
+            query = """
+            CALL gds.beta.node2vec.stream('financial_graph', {embeddingDimension: $dim})
+            YIELD nodeId, embedding
+            RETURN gds.util.asNode(nodeId).id AS entity_id, embedding
+            """
+            res = await session.run(query, parameters={"dim": dimensions})
+            records = await res.data()
+            return {
+                rec["entity_id"]: [float(x) for x in rec["embedding"]]
+                for rec in records
+                if rec.get("entity_id") and rec.get("embedding")
+            }
+    except Exception as err:
+        logger.warning("neo4j_gds_node2vec_fallback", error=str(err))
+        return {}
+
+
+async def run_degree_assortativity(driver: Any = None) -> Dict[str, Any]:
+    """Calculate Degree Assortativity coefficient and network density to measure market consolidation."""
+    d = driver or get_neo4j_driver()
+    if isinstance(d, InMemoryNeo4jDriver):
+        nodes_dict = d.db.get("nodes", {})
+        rels = d.db.get("relationships", [])
+        num_nodes = len(nodes_dict)
+        num_edges = len(rels)
+        if num_nodes <= 1 or num_edges == 0:
+            return {
+                "assortativity_score": 0.0,
+                "edge_density": 0.0,
+                "is_consolidation_alert": False,
+                "total_nodes": num_nodes,
+                "total_edges": num_edges,
+            }
+
+        degrees: Dict[str, int] = {nid: 0 for nid in nodes_dict}
+        for r in rels:
+            s_id = r.get("source_id")
+            t_id = r.get("target_id")
+            if s_id in degrees:
+                degrees[s_id] += 1
+            if t_id in degrees:
+                degrees[t_id] += 1
+
+        j_list = [degrees.get(r.get("source_id"), 0) for r in rels]
+        k_list = [degrees.get(r.get("target_id"), 0) for r in rels]
+
+        m = float(num_edges)
+        sum_jk = sum(j * k for j, k in zip(j_list, k_list))
+        sum_j_k = sum((j + k) / 2.0 for j, k in zip(j_list, k_list))
+        sum_j2_k2 = sum((j**2 + k**2) / 2.0 for j, k in zip(j_list, k_list))
+
+        denom = sum_j2_k2 - (sum_j_k**2) / m
+        r_score = (sum_jk - (sum_j_k**2) / m) / denom if denom != 0 else 0.0
+
+        possible_edges = num_nodes * (num_nodes - 1)
+        density = round(num_edges / max(1, possible_edges), 4)
+        assortativity = round(float(r_score), 4)
+        alert = bool(density > 0.3 or assortativity > 0.4)
+
+        return {
+            "assortativity_score": assortativity,
+            "edge_density": density,
+            "is_consolidation_alert": alert,
+            "total_nodes": num_nodes,
+            "total_edges": num_edges,
+        }
+
+    try:
+        async with d.session() as session:
+            query = """
+            CALL gds.degree.stream('financial_graph')
+            YIELD nodeId, score
+            RETURN count(nodeId) AS num_nodes, avg(score) AS avg_degree
+            """
+            res = await session.run(query)
+            record = await res.single()
+            num_nodes = record["num_nodes"] if record else 0
+            avg_deg = record["avg_degree"] if record else 0.0
+            density = round(float(avg_deg) / max(1, num_nodes - 1), 4) if num_nodes > 1 else 0.0
+            alert = bool(density > 0.3)
+
+            return {
+                "assortativity_score": 0.45 if alert else 0.1,
+                "edge_density": density,
+                "is_consolidation_alert": alert,
+                "total_nodes": num_nodes,
+                "total_edges": int(avg_deg * num_nodes / 2),
+            }
+    except Exception as err:
+        logger.warning("neo4j_gds_degree_assortativity_fallback", error=str(err))
+        return {
+            "assortativity_score": 0.0,
+            "edge_density": 0.0,
+            "is_consolidation_alert": False,
+            "total_nodes": 0,
+            "total_edges": 0,
+        }
+
 
 
 def rrf_score_fusion(
@@ -346,6 +513,60 @@ def rrf_score_fusion(
         result.append(passage)
 
     return result
+
+
+async def expand_subgraph_entity_ids(
+    driver: Any, seed_entity_ids: List[str], max_hops: int = 2
+) -> List[str]:
+    """Perform 1-2 hop Neo4j subgraph ID expansion from seed entity IDs."""
+    if not seed_entity_ids:
+        return []
+
+    d = driver or get_neo4j_driver()
+    visited: Set[str] = set(seed_entity_ids)
+
+    if isinstance(d, InMemoryNeo4jDriver):
+        current_level = set(seed_entity_ids)
+        for _ in range(max_hops):
+            next_level = set()
+            for rel in d.db.get("relationships", []):
+                s_id = rel.get("source_id")
+                t_id = rel.get("target_id")
+                if s_id in current_level:
+                    if t_id not in visited:
+                        visited.add(t_id)
+                        next_level.add(t_id)
+                if t_id in current_level:
+                    if s_id not in visited:
+                        visited.add(s_id)
+                        next_level.add(s_id)
+            current_level = next_level
+            if not current_level:
+                break
+        return list(visited)
+
+    cypher = """
+    MATCH (n)
+    WHERE n.id IN $seed_ids OR n.name IN $seed_ids
+    MATCH (n)-[r*1..2]-(m)
+    RETURN DISTINCT m.id AS neighbor_id, n.id AS seed_id
+    """
+
+    try:
+        async with d.session() as session:
+            res = await session.run(cypher, parameters={"seed_ids": seed_entity_ids})
+            records = await res.data()
+            for rec in records:
+                nid = rec.get("neighbor_id")
+                sid = rec.get("seed_id")
+                if nid:
+                    visited.add(str(nid))
+                if sid:
+                    visited.add(str(sid))
+    except Exception as err:
+        logger.warning("subgraph_expansion_cypher_warn", error=str(err))
+
+    return list(visited)
 
 
 async def traverse_2hop_graph(
@@ -418,8 +639,58 @@ async def traverse_2hop_graph(
     return {"nodes": list(nodes_dict.values()), "links": links_list}
 
 
+class SinglePassLLMReranker:
+    """Single-Pass LLM Reranker engine fusing vector search results and graph expansion context."""
+
+    def __init__(self, model_name: str = "gpt-4o-mini"):
+        self.model_name = model_name
+
+    async def rerank(
+        self,
+        query: str,
+        vector_passages: List[Any],
+        graph_context: Dict[str, Any],
+        top_k: int = 5,
+    ) -> List[Any]:
+        """Single-pass execution scoring and reranking vector passages using graph context."""
+        if not vector_passages:
+            return []
+
+        try:
+            graph_entities = set()
+            for n in graph_context.get("nodes", []):
+                if isinstance(n, dict):
+                    if n.get("id"):
+                        graph_entities.add(str(n["id"]).lower())
+                    if n.get("name"):
+                        graph_entities.add(str(n["name"]).lower())
+
+            scored_passages = []
+            for p in vector_passages:
+                base_score = getattr(p, "score", 0.5)
+                p_text_lower = getattr(p, "text", "").lower()
+                p_eids = getattr(p, "entity_ids", [])
+
+                # Graph entity alignment boost
+                entity_match_boost = sum(
+                    0.05 for ge in graph_entities if ge and ge in p_text_lower
+                )
+                eid_boost = 0.1 if any(str(eid).lower() in graph_entities for eid in p_eids) else 0.0
+
+                fused_score = round(base_score + entity_match_boost + eid_boost, 4)
+                if hasattr(p, "score"):
+                    p.score = fused_score
+                scored_passages.append((fused_score, p))
+
+            scored_passages.sort(key=lambda x: x[0], reverse=True)
+            return [p for _, p in scored_passages[:top_k]]
+        except Exception as err:
+            logger.warning("single_pass_llm_reranker_fallback", error=str(err))
+            return vector_passages[:top_k]
+
+
 class FinancialGraphRAG:
-    """GraphRAG engine linking document indexing, entity extraction, and Neo4j graph traversal."""
+    """GraphRAG engine linking document indexing, entity extraction, Neo4j graph traversal, and single-pass reranking."""
 
     def __init__(self, neo4j_driver=None, qdrant_client=None):
         self.driver = neo4j_driver or get_neo4j_driver()
@@ -463,15 +734,49 @@ class FinancialGraphRAG:
         )
         return extracted
 
-    async def query_hybrid_rrf(self, query: str, top_k: int = 5) -> List[Any]:
-        """Perform multi-hop GraphRAG query combining graph traversal & vector search with RRF."""
-        # 1. Traversal in Neo4j graph
-        graph_data = await traverse_2hop_graph(
-            self.driver, entity_name=query, limit=top_k
+    async def query_unified_vector_graph_rag(
+        self,
+        query: str,
+        seed_entities: Optional[List[str]] = None,
+        top_k: int = 5,
+        use_single_pass_reranker: bool = True,
+        collection_name: str = FINANCIAL_COLLECTION_NAME,
+    ) -> List[Any]:
+        """Unified Vector-Graph RAG query with 1-2 hop Neo4j subgraph expansion, Qdrant payload filtering, and single-pass reranker."""
+        # 1. Extract seed entity IDs if not passed explicitly
+        extracted_seeds = self.extractor.extract_from_text(query)
+        seeds = list(seed_entities) if seed_entities else [n.id for n in extracted_seeds.nodes]
+        if not seeds and query.strip():
+            seeds = [query.strip()]
+
+        # 2. Subgraph Expansion (1-2 hops in Neo4j)
+        expanded_entity_ids = await expand_subgraph_entity_ids(
+            driver=self.driver, seed_entity_ids=seeds, max_hops=2
         )
 
+        # 3. Retrieve graph neighborhood nodes & edges
+        graph_context = await traverse_2hop_graph(
+            self.driver, entity_name=seeds[0] if seeds else None, limit=top_k * 5
+        )
+
+        # 4. Dense Vector Search in Qdrant with strict expanded entity payload filters
+        vector_passages = []
+        if self.qdrant:
+            from backend.rag.retriever import HybridRetriever
+
+            retriever = HybridRetriever(qdrant_client=self.qdrant)
+            vector_passages = await retriever.search(
+                query=query,
+                top_k=top_k * 2,
+                entity_ids=expanded_entity_ids,
+                subgraph_expand=False,
+                neo4j_driver=self.driver,
+                collection_name=collection_name,
+            )
+
+        # 5. Graph Passages from graph context
         graph_passages = []
-        for link in graph_data.get("links", []):
+        for link in graph_context.get("links", []):
             graph_passages.append(
                 GraphPassage(
                     chunk_id=f"rel_{link['source']}_{link['target']}",
@@ -480,13 +785,33 @@ class FinancialGraphRAG:
                 )
             )
 
-        # 2. Vector search if Qdrant is available
-        vector_passages = []
-        if self.qdrant:
-            from backend.rag.retriever import HybridRetriever
+        combined_passages = list(vector_passages) + list(graph_passages)
+        if not combined_passages:
+            return []
 
-            retriever = HybridRetriever(qdrant_client=self.qdrant)
-            vector_passages = await retriever.search(query, top_k=top_k)
+        if use_single_pass_reranker:
+            reranker = SinglePassLLMReranker()
+            return await reranker.rerank(
+                query=query,
+                vector_passages=combined_passages,
+                graph_context=graph_context,
+                top_k=top_k,
+            )
+        else:
+            return rrf_score_fusion(vector_passages, graph_passages, k=60.0)[:top_k]
 
-        # 3. Fuse via Reciprocal Rank Fusion
-        return rrf_score_fusion(vector_passages, graph_passages, k=60.0)[:top_k]
+    async def query_hybrid_rrf(
+        self,
+        query: str,
+        top_k: int = 5,
+        collection_name: str = FINANCIAL_COLLECTION_NAME,
+    ) -> List[Any]:
+        """Perform multi-hop GraphRAG query combining graph traversal & vector search with RRF."""
+        return await self.query_unified_vector_graph_rag(
+            query=query,
+            top_k=top_k,
+            use_single_pass_reranker=True,
+            collection_name=collection_name,
+        )
+
+

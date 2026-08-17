@@ -47,6 +47,8 @@ async def init_qdrant_collection(
                 ("company_ticker", PayloadSchemaType.KEYWORD),
                 ("document_type", PayloadSchemaType.KEYWORD),
                 ("fiscal_year", PayloadSchemaType.INTEGER),
+                ("entity_ids", PayloadSchemaType.KEYWORD),
+                ("community_tag", PayloadSchemaType.KEYWORD),
             ]
             for field_name, field_schema in payload_fields:
                 try:

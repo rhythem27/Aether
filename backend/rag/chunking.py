@@ -24,6 +24,9 @@ class ChunkMetadata(BaseModel):
     document_type: str = "general"
     has_tables: bool = False
     tables_json: List[Dict[str, Any]] = Field(default_factory=list)
+    entity_ids: List[str] = Field(default_factory=list)
+    community_tag: Optional[str] = None
+
 
 
 class DocumentChunk(BaseModel):
@@ -102,6 +105,7 @@ class TokenAwareChunker:
         company_name: Optional[str] = None,
         fiscal_year: Optional[int] = None,
         document_type: str = "financial_report",
+        entity_ids: Optional[List[str]] = None,
     ) -> List[DocumentChunk]:
         chunks: List[DocumentChunk] = []
         chunk_idx = 0
@@ -111,6 +115,22 @@ class TokenAwareChunker:
         current_section: Optional[str] = None
         current_page = 1
         tables_in_chunk: List[Dict[str, Any]] = []
+
+        def _get_chunk_entity_ids(chunk_text: str) -> List[str]:
+            e_ids = list(entity_ids) if entity_ids else []
+            if company_ticker:
+                ticker_eid = f"company_{company_ticker.lower()}"
+                if ticker_eid not in e_ids:
+                    e_ids.append(ticker_eid)
+            try:
+                from backend.rag.graphrag import EntityExtractor
+                extracted = EntityExtractor().extract_from_text(chunk_text)
+                for node in extracted.nodes:
+                    if node.id not in e_ids:
+                        e_ids.append(node.id)
+            except Exception:
+                pass
+            return e_ids
 
         for element in document.elements:
             elem_tokens = self.count_tokens(element.text)
@@ -141,6 +161,7 @@ class TokenAwareChunker:
                             document_type=document_type,
                             has_tables=len(tables_in_chunk) > 0,
                             tables_json=tables_in_chunk,
+                            entity_ids=_get_chunk_entity_ids(chunk_text),
                         ),
                     )
                 )
@@ -175,6 +196,7 @@ class TokenAwareChunker:
                         document_type=document_type,
                         has_tables=len(tables_in_chunk) > 0,
                         tables_json=tables_in_chunk,
+                        entity_ids=_get_chunk_entity_ids(chunk_text),
                     ),
                 )
             )
@@ -183,3 +205,4 @@ class TokenAwareChunker:
             "chunking_complete", filename=document.filename, num_chunks=len(chunks)
         )
         return chunks
+

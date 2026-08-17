@@ -15,6 +15,8 @@ class AgentState(TypedDict):
     verified_claims: List[Dict[str, Any]]
     graph_operations: List[Dict[str, Any]]
     report_sections: Dict[str, Any]
+    macro_trends_data: Optional[Dict[str, Any]]
     human_approval: bool
     errors: List[str]
     token_usage: Dict[str, int]
+

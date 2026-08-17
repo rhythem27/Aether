@@ -61,14 +61,16 @@ async def research_node(state: AgentState) -> Dict[str, Any]:
             sentiment_fn, articles=recent_news
         )
 
-        # 4. Hybrid Vector + GraphRAG RRF passages
+        # 4. Unified Vector + GraphRAG single-pass passages
         passages = []
         try:
             from backend.rag.graphrag import FinancialGraphRAG
             graph_rag = FinancialGraphRAG()
-            fused_results = await graph_rag.query_hybrid_rrf(
+            fused_results = await graph_rag.query_unified_vector_graph_rag(
                 query=f"{ticker} financial revenue growth risk factors",
+                seed_entities=[f"company_{ticker.lower()}"],
                 top_k=5,
+                use_single_pass_reranker=True,
             )
             passages = [p.model_dump() for p in fused_results if hasattr(p, "model_dump")]
         except Exception as rag_err:
