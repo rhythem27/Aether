@@ -16,7 +16,9 @@ class AgentState(TypedDict):
     graph_operations: List[Dict[str, Any]]
     report_sections: Dict[str, Any]
     macro_trends_data: Optional[Dict[str, Any]]
+    provenance_chain: Annotated[Sequence[Dict[str, Any]], operator.add]
     human_approval: bool
     errors: List[str]
     token_usage: Dict[str, int]
+
 

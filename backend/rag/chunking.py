@@ -132,13 +132,16 @@ class TokenAwareChunker:
                 pass
             return e_ids
 
+        from backend.rag.privacy import scrub_pii_and_mnpi
+
         for element in document.elements:
-            elem_tokens = self.count_tokens(element.text)
+            scrubbed_text = scrub_pii_and_mnpi(element.text)
+            elem_tokens = self.count_tokens(scrubbed_text)
 
             # If element is a table, retain its structured payload
             if element.element_type == "table":
                 tables_in_chunk.append(
-                    {"text": element.text, "metadata": element.metadata}
+                    {"text": scrubbed_text, "metadata": element.metadata}
                 )
 
             # Check if adding this element exceeds max token window
@@ -171,7 +174,7 @@ class TokenAwareChunker:
                 current_token_count = 0
                 tables_in_chunk = []
 
-            current_text_buf.append(element.text)
+            current_text_buf.append(scrubbed_text)
             current_token_count += elem_tokens
             current_page = element.page_number
             if element.section_heading:
@@ -200,6 +203,7 @@ class TokenAwareChunker:
                     ),
                 )
             )
+
 
         logger.info(
             "chunking_complete", filename=document.filename, num_chunks=len(chunks)

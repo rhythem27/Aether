@@ -84,11 +84,42 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
         verified_count = sum(
             1 for c in verified_claims if c.get("status") == "VERIFIED"
         )
-        ai_msg = AIMessage(
-            content=f"[Verify Agent] Completed claim audit for {ticker}. Verified {verified_count}/{len(verified_claims)} financial claims against primary sources."
+
+        total_claims = len(verified_claims)
+        avg_conf = (
+            sum(float(c.get("confidence_score", 0.0)) for c in verified_claims) / max(1, total_claims)
+            if total_claims > 0
+            else 0.0
         )
 
-        return {"verified_claims": verified_claims, "messages": [ai_msg]}
+        low_conf_count = int(state.get("low_confidence_attempts", 0))
+        if avg_conf < 0.85:
+            low_conf_count += 1
+            logger.warning(
+                "verify_low_confidence_iteration",
+                ticker=ticker,
+                avg_confidence=round(avg_conf, 2),
+                consecutive_count=low_conf_count,
+            )
+        else:
+            low_conf_count = 0
+
+        if low_conf_count >= 3:
+            cb_msg = "CIRCUIT_BREAKER_TRIGGERED: Verification confidence < 85% across 3 consecutive iterations."
+            logger.error("circuit_breaker_triggered", ticker=ticker, avg_confidence=round(avg_conf, 2))
+            if cb_msg not in errors:
+                errors.append(cb_msg)
+
+        ai_msg = AIMessage(
+            content=f"[Verify Agent] Completed claim audit for {ticker}. Verified {verified_count}/{total_claims} financial claims (avg confidence: {avg_conf:.2f})."
+        )
+
+        return {
+            "verified_claims": verified_claims,
+            "low_confidence_attempts": low_conf_count,
+            "errors": errors,
+            "messages": [ai_msg],
+        }
 
     except Exception as e:
         err_msg = f"Verify Agent failed for {ticker}: {str(e)}"
@@ -98,6 +129,7 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
             "errors": errors,
             "messages": [AIMessage(content=f"[Verify Agent Error] {err_msg}")],
         }
+
 
 
 async def high_risk_validator_node(state: AgentState) -> Dict[str, Any]:

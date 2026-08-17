@@ -26,9 +26,14 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
 def supervisor_router(state: AgentState) -> str:
     """Routing edge logic for Supervisor Plan-Execute workflow."""
     errors = state.get("errors", [])
+    if any("CIRCUIT_BREAKER_TRIGGERED" in str(err) for err in errors):
+        logger.error("supervisor_circuit_breaker_escalating_to_human")
+        return "human_escalation"
+
     if errors and len(errors) > 2:
         logger.warning("supervisor_escalating_to_human", num_errors=len(errors))
         return "human_escalation"
+
 
     if not state.get("research_data"):
         return "research_agent"
