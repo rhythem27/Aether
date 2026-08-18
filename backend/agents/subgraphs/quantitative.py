@@ -102,6 +102,9 @@ async def quantitative_risk_node(state: AgentState) -> Dict[str, Any]:
     }
 
 
+from backend.agents.financial_modeling import financial_modeling_node
+
+
 def create_quantitative_subgraph(checkpointer: Optional[Any] = None):
     """Build and compile the Quantitative Sub-Graph."""
     workflow = StateGraph(AgentState)
@@ -109,11 +112,13 @@ def create_quantitative_subgraph(checkpointer: Optional[Any] = None):
     workflow.add_node("ratio_calculator", ratio_calculator_node)
     workflow.add_node("valuation_model", valuation_model_node)
     workflow.add_node("quantitative_risk", quantitative_risk_node)
+    workflow.add_node("financial_modeling", financial_modeling_node)
 
     workflow.set_entry_point("ratio_calculator")
     workflow.add_edge("ratio_calculator", "valuation_model")
     workflow.add_edge("valuation_model", "quantitative_risk")
-    workflow.add_edge("quantitative_risk", END)
+    workflow.add_edge("quantitative_risk", "financial_modeling")
+    workflow.add_edge("financial_modeling", END)
 
     return workflow.compile(checkpointer=checkpointer)
 

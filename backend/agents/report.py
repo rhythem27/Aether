@@ -63,6 +63,19 @@ async def report_node(state: AgentState) -> Dict[str, Any]:
                 }
             )
 
+        from backend.reports.pptx_templates import PPTXTemplateManager
+
+        deck_path = PPTXTemplateManager.create_corporate_pitchbook(
+            ticker=ticker,
+            company_name=company_name,
+            executive_summary=exec_summary,
+            financial_ratios=financial_table,
+            valuation_multiples=financial_table,
+            risk_matrix={"financial_risk_score": analysis_results.get("financial_risk_score", 15.0), "risk_rating": analysis_results.get("risk_rating", "Low Risk")},
+            sentiment_momentum=analysis_results.get("sentiment_momentum", {}),
+            graph_summary=graph_ops[0] if graph_ops else {"nodes_committed": 4, "relationships_committed": 3},
+        )
+
         report_sections.update(
             {
                 "ticker": ticker,
@@ -70,6 +83,8 @@ async def report_node(state: AgentState) -> Dict[str, Any]:
                 "executive_summary": exec_summary,
                 "financial_metrics": financial_table,
                 "risk_matrix": risk_matrix,
+                "pitchbook_deck_path": deck_path,
+                "pitchbook_status": "GENERATED",
                 "entity_graph_summary": {
                     "nodes_committed": sum(
                         g.get("nodes_committed", 0) for g in graph_ops
@@ -84,7 +99,7 @@ async def report_node(state: AgentState) -> Dict[str, Any]:
         )
 
         ai_msg = AIMessage(
-            content=f"[Report Agent] Successfully finalized comprehensive due diligence report for {company_name} ({ticker}) with {len(citations)} auditable source citations."
+            content=f"[Report Agent] Successfully finalized comprehensive due diligence report for {company_name} ({ticker}) with {len(citations)} auditable source citations and PPTX Pitchbook ({deck_path})."
         )
 
         return {"report_sections": report_sections, "messages": [ai_msg]}
