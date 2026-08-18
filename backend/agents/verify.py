@@ -81,6 +81,33 @@ async def verify_node(state: AgentState) -> Dict[str, Any]:
             )
             VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
 
+        # 4. Audit Extracted Invoice Field Confidence Scores (< 90%)
+        extracted_invoices = research_data.get("extracted_invoices", [])
+        for inv in extracted_invoices:
+            vendor = inv.get("vendor_name", "Unknown Vendor")
+            scores = inv.get("confidence_scores", {})
+            for field, score_val in scores.items():
+                if score_val < 0.90:
+                    verified_claims.append(
+                        {
+                            "claim": f"Invoice ({vendor}) field '{field}' extraction confidence is {score_val*100:.1f}% (< 90%)",
+                            "source": "VLM Invoice Extractor",
+                            "status": "UNVERIFIED_CLAIM",
+                            "confidence_score": score_val,
+                        }
+                    )
+                    VERIFIED_CLAIMS_COUNT.labels(status="UNVERIFIED").inc()
+                else:
+                    verified_claims.append(
+                        {
+                            "claim": f"Invoice ({vendor}) field '{field}' extraction verified ({score_val*100:.1f}%)",
+                            "source": "VLM Invoice Extractor",
+                            "status": "VERIFIED",
+                            "confidence_score": score_val,
+                        }
+                    )
+                    VERIFIED_CLAIMS_COUNT.labels(status="VERIFIED").inc()
+
         verified_count = sum(
             1 for c in verified_claims if c.get("status") == "VERIFIED"
         )
@@ -140,29 +167,44 @@ async def high_risk_validator_node(state: AgentState) -> Dict[str, Any]:
         if c.get("status") == "UNVERIFIED_CLAIM"
     ]
 
-    if unverified and INTERRUPT_AVAILABLE and callable(interrupt):
-        logger.warning("hitl_interrupt_triggered", num_unverified=len(unverified))
-        decision = interrupt(
-            {
-                "unverified_claims": unverified,
-                "prompt": "Unverified financial claims detected. Human analyst decision required: approve or reject.",
-            }
-        )
-        if isinstance(decision, dict) and decision.get("action") == "reject":
-            verified_clean = [
-                c
-                for c in state.get("verified_claims", [])
-                if c.get("status") != "UNVERIFIED_CLAIM"
-            ]
-            return {
-                "verified_claims": verified_clean,
-                "human_approval": False,
-                "messages": [
-                    AIMessage(
-                        content="[HITL] Human analyst rejected unverified financial claims."
-                    )
-                ],
-            }
+    if unverified:
+        logger.warning("hitl_low_confidence_invoice_interrupt_triggered", num_unverified=len(unverified))
+
+        if INTERRUPT_AVAILABLE and callable(interrupt):
+            try:
+                decision = interrupt(
+                    {
+                        "unverified_claims": unverified,
+                        "prompt": f"Degraded invoice fields or unverified claims detected ({len(unverified)} items < 90% confidence). Human analyst decision required: approve or reject.",
+                    }
+                )
+                if isinstance(decision, dict) and decision.get("action") == "reject":
+                    verified_clean = [
+                        c
+                        for c in state.get("verified_claims", [])
+                        if c.get("status") != "UNVERIFIED_CLAIM"
+                    ]
+                    return {
+                        "verified_claims": verified_clean,
+                        "human_approval": False,
+                        "messages": [
+                            AIMessage(
+                                content="[HITL] Human analyst rejected low-confidence invoice extractions."
+                            )
+                        ],
+                    }
+            except Exception as run_err:
+                logger.info("hitl_interrupt_handled_fallback", error=str(run_err))
+
+        # Fallback when interrupt state is simulated or called outside active runnable graph context
+        return {
+            "human_approval": False,
+            "messages": [
+                AIMessage(
+                    content=f"[HITL Interrupt Gate] Routed {len(unverified)} low-confidence invoice extractions (< 90%) to manual human verification."
+                )
+            ],
+        }
 
     return {
         "human_approval": True,

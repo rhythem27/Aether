@@ -10,21 +10,29 @@ from backend.agents.verify import verify_node
 from backend.agents.graph_builder import graph_node
 from backend.agents.macro_trends import macro_trends_node
 from backend.agents.report import report_node
+from backend.agents.subgraphs import (
+    create_ingestion_subgraph,
+    ingestion_node,
+    create_quantitative_subgraph,
+    quantitative_node,
+    create_qualitative_subgraph,
+    qualitative_node,
+)
 
 logger = structlog.get_logger(__name__)
 
 
 async def supervisor_node(state: AgentState) -> Dict[str, Any]:
-    """Supervisor Agent: Decomposes tasks, validates inputs, and plans next steps."""
+    """Master Orchestrator Agent: Decomposes tasks, validates inputs, and plans nested sub-graph execution."""
     ticker = state.get("company_ticker", "UNKNOWN")
-    logger.info("supervisor_node_executing", ticker=ticker)
+    logger.info("master_orchestrator_node_executing", ticker=ticker)
 
-    ai_msg = AIMessage(content=f"[Supervisor Agent] Planning execution for {ticker}.")
+    ai_msg = AIMessage(content=f"[Master Orchestrator] Planning nested sub-graph execution for {ticker}.")
     return {"messages": [ai_msg]}
 
 
 def supervisor_router(state: AgentState) -> str:
-    """Routing edge logic for Supervisor Plan-Execute workflow."""
+    """Routing edge logic for Master Orchestrator Plan-Execute workflow."""
     errors = state.get("errors", [])
     if any("CIRCUIT_BREAKER_TRIGGERED" in str(err) for err in errors):
         logger.error("supervisor_circuit_breaker_escalating_to_human")
@@ -33,7 +41,6 @@ def supervisor_router(state: AgentState) -> str:
     if errors and len(errors) > 2:
         logger.warning("supervisor_escalating_to_human", num_errors=len(errors))
         return "human_escalation"
-
 
     if not state.get("research_data"):
         return "research_agent"
@@ -64,11 +71,37 @@ async def human_escalation_node(state: AgentState) -> Dict[str, Any]:
     }
 
 
+async def master_orchestrator_ingestion_node(state: AgentState) -> Dict[str, Any]:
+    """Master Orchestrator delegate node for Data Ingestion Sub-Graph."""
+    logger.info("master_orchestrator_delegating_ingestion")
+    return await ingestion_node(state)
+
+
+async def master_orchestrator_quantitative_node(state: AgentState) -> Dict[str, Any]:
+    """Master Orchestrator delegate node for Quantitative Sub-Graph."""
+    logger.info("master_orchestrator_delegating_quantitative")
+    return await quantitative_node(state)
+
+
+async def master_orchestrator_qualitative_node(state: AgentState) -> Dict[str, Any]:
+    """Master Orchestrator delegate node for Qualitative Sub-Graph."""
+    logger.info("master_orchestrator_delegating_qualitative")
+    return await qualitative_node(state)
+
+
 def create_supervisor_workflow(checkpointer: Optional[Any] = None):
-    """Build and compile the multi-agent LangGraph workflow with optional checkpointer persistence."""
+    """Build and compile the Master Orchestrator multi-agent LangGraph workflow with nested sub-graphs."""
     workflow = StateGraph(AgentState)
 
+    ingestion_subgraph = create_ingestion_subgraph()
+    quantitative_subgraph = create_quantitative_subgraph()
+    qualitative_subgraph = create_qualitative_subgraph()
+
     workflow.add_node("supervisor", supervisor_node)
+    workflow.add_node("ingestion_subgraph", ingestion_subgraph)
+    workflow.add_node("quantitative_subgraph", quantitative_subgraph)
+    workflow.add_node("qualitative_subgraph", qualitative_subgraph)
+
     workflow.add_node("research_agent", research_node)
     workflow.add_node("analysis_agent", analysis_node)
     workflow.add_node("verify_agent", verify_node)
@@ -94,7 +127,6 @@ def create_supervisor_workflow(checkpointer: Optional[Any] = None):
         },
     )
 
-    # Return to supervisor after each agent step
     workflow.add_edge("research_agent", "supervisor")
     workflow.add_edge("analysis_agent", "supervisor")
     workflow.add_edge("verify_agent", "supervisor")
@@ -104,4 +136,8 @@ def create_supervisor_workflow(checkpointer: Optional[Any] = None):
     workflow.add_edge("human_escalation", END)
 
     return workflow.compile(checkpointer=checkpointer)
+
+
+create_master_orchestrator_workflow = create_supervisor_workflow
+
 

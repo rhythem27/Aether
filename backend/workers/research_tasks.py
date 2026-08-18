@@ -218,3 +218,111 @@ async def execute_research_job_async(job_id: str, target_company: str):
 def run_research_workflow(job_id: str, target_company: str):
     """Celery background worker entry point."""
     asyncio.run(execute_research_job_async(job_id, target_company))
+
+
+@celery_app.task(name="backend.workers.research_tasks.run_ingestion_subgraph_task")
+def run_ingestion_subgraph_task(job_id: str, target_company: str, document_paths: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Execute Data Ingestion Sub-Graph independently in background Celery worker."""
+    from backend.agents.subgraphs.ingestion import ingestion_node
+    initial_state: AgentState = {
+        "messages": [],
+        "company_ticker": target_company.upper(),
+        "company_name": target_company,
+        "fiscal_year": 2025,
+        "research_data": {"document_paths": document_paths or []},
+        "analysis_results": {},
+        "verified_claims": [],
+        "graph_operations": [],
+        "report_sections": {},
+        "human_approval": True,
+        "errors": [],
+        "token_usage": {},
+    }
+    return asyncio.run(ingestion_node(initial_state))
+
+
+@celery_app.task(name="backend.workers.research_tasks.run_quantitative_subgraph_task")
+def run_quantitative_subgraph_task(job_id: str, target_company: str, research_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Execute Quantitative Sub-Graph independently in background Celery worker."""
+    from backend.agents.subgraphs.quantitative import quantitative_node
+    initial_state: AgentState = {
+        "messages": [],
+        "company_ticker": target_company.upper(),
+        "company_name": target_company,
+        "fiscal_year": 2025,
+        "research_data": research_data or {},
+        "analysis_results": {},
+        "verified_claims": [],
+        "graph_operations": [],
+        "report_sections": {},
+        "human_approval": True,
+        "errors": [],
+        "token_usage": {},
+    }
+    return asyncio.run(quantitative_node(initial_state))
+
+
+@celery_app.task(name="backend.workers.research_tasks.run_qualitative_subgraph_task")
+def run_qualitative_subgraph_task(job_id: str, target_company: str, research_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Execute Qualitative Sub-Graph independently in background Celery worker."""
+    from backend.agents.subgraphs.qualitative import qualitative_node
+    initial_state: AgentState = {
+        "messages": [],
+        "company_ticker": target_company.upper(),
+        "company_name": target_company,
+        "fiscal_year": 2025,
+        "research_data": research_data or {},
+        "analysis_results": {},
+        "verified_claims": [],
+        "graph_operations": [],
+        "report_sections": {},
+        "human_approval": True,
+        "errors": [],
+        "token_usage": {},
+    }
+    return asyncio.run(qualitative_node(initial_state))
+
+
+async def dispatch_parallel_subgraphs_async(target_company: str, document_paths: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Dispatch Ingestion, Quantitative, and Qualitative sub-graphs in parallel across worker coroutines."""
+    from backend.agents.subgraphs.ingestion import ingestion_node
+    from backend.agents.subgraphs.quantitative import quantitative_node
+    from backend.agents.subgraphs.qualitative import qualitative_node
+
+    initial_state: AgentState = {
+        "messages": [],
+        "company_ticker": target_company.upper(),
+        "company_name": target_company,
+        "fiscal_year": 2025,
+        "research_data": {"document_paths": document_paths or []},
+        "analysis_results": {},
+        "verified_claims": [],
+        "graph_operations": [],
+        "report_sections": {},
+        "human_approval": True,
+        "errors": [],
+        "token_usage": {},
+    }
+
+    ingestion_res, quant_res, qual_res = await asyncio.gather(
+        ingestion_node(initial_state),
+        quantitative_node(initial_state),
+        qualitative_node(initial_state),
+        return_exceptions=True,
+    )
+
+    aggregated_research = {}
+    aggregated_analysis = {}
+
+    if isinstance(ingestion_res, dict) and "research_data" in ingestion_res:
+        aggregated_research.update(ingestion_res["research_data"])
+    if isinstance(quant_res, dict) and "analysis_results" in quant_res:
+        aggregated_analysis.update(quant_res["analysis_results"])
+    if isinstance(qual_res, dict) and "analysis_results" in qual_res:
+        aggregated_analysis.update(qual_res["analysis_results"])
+
+    return {
+        "research_data": aggregated_research,
+        "analysis_results": aggregated_analysis,
+    }
+
