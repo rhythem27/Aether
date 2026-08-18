@@ -30,6 +30,20 @@ VERIFIED_CLAIMS_COUNT = Counter(
     "aether_verified_claims_total", "Total audited financial claims", ["status"]
 )
 
+# 5. Outage Fallback & Graceful Degradation Counter
+DEGRADATION_EVENTS_COUNT = Counter(
+    "aether_degradation_events_total",
+    "Total database/API outage fallback degradation events",
+    ["source", "target"],
+)
+
+# 6. FastMCP API Retries Counter
+MCP_RETRY_EVENTS_COUNT = Counter(
+    "aether_mcp_retry_events_total",
+    "Total FastMCP API retry events",
+    ["server_name", "status"],
+)
+
 
 def get_prometheus_metrics() -> tuple[bytes, str]:
     """Generate Prometheus metric payload and content-type header."""

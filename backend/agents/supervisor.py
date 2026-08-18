@@ -38,6 +38,13 @@ def supervisor_router(state: AgentState) -> str:
         logger.error("supervisor_circuit_breaker_escalating_to_human")
         return "human_escalation"
 
+    # Token Budget Circuit Breaker: route directly to report_agent for graceful truncation
+    if state.get("budget_exceeded") or any("BUDGET_CAP_EXCEEDED" in str(err) for err in errors):
+        logger.warning("supervisor_budget_cap_exceeded_truncating_to_report")
+        if state.get("report_sections", {}).get("status") != "FINALIZED":
+            return "report_agent"
+        return END
+
     if errors and len(errors) > 2:
         logger.warning("supervisor_escalating_to_human", num_errors=len(errors))
         return "human_escalation"

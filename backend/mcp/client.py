@@ -2,24 +2,45 @@ import os
 import json
 import asyncio
 from typing import Any, Callable, Dict, List, Optional
+import random
 from tenacity import (
     retry,
     stop_after_attempt,
-    wait_exponential,
+    wait_random_exponential,
     retry_if_exception_type,
+    before_sleep_log,
 )
 import structlog
-
+from backend.core.metrics import MCP_RETRY_EVENTS_COUNT
 
 logger = structlog.get_logger(__name__)
 
 
+def _on_mcp_retry(retry_state):
+    """Callback function logging retry events and incrementing Prometheus metrics."""
+    try:
+        fn = getattr(retry_state, "fn", None)
+        fn_name = getattr(fn, "__name__", "mcp_tool")
+        attempt = getattr(retry_state, "attempt_number", 1)
+        exc = retry_state.outcome.exception() if hasattr(retry_state, "outcome") and retry_state.outcome else None
+        logger.warning(
+            "mcp_tool_retry_attempt",
+            function=fn_name,
+            attempt=attempt,
+            error=str(exc),
+        )
+        MCP_RETRY_EVENTS_COUNT.labels(server_name=fn_name, status="retry").inc()
+    except Exception as e:
+        logger.warning("mcp_retry_logging_error", error=str(e))
+
+
 def retry_mcp_call(fn: Callable) -> Callable:
-    """Decorator applying exponential backoff retries to MCP tool calls via Tenacity."""
+    """Decorator applying exponential backoff retries with randomized jitter to FastMCP tool calls."""
     return retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=0.5, min=0.5, max=4.0),
+        wait=wait_random_exponential(min=0.2, max=4.0),
         retry=retry_if_exception_type((TimeoutError, ConnectionError, Exception)),
+        before_sleep=_on_mcp_retry,
         reraise=True,
     )(fn)
 

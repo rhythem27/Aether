@@ -63,6 +63,17 @@ async def report_node(state: AgentState) -> Dict[str, Any]:
                 }
             )
 
+        # 5. Check for API Budget Cap Truncation
+        is_budget_truncated = state.get("budget_exceeded", False) or any(
+            "BUDGET_CAP_EXCEEDED" in str(e) for e in errors
+        )
+        if is_budget_truncated:
+            trunc_notice = "\n\n[SYSTEM NOTICE: Report compiled under API Budget Truncation Cap ($1.50 limit reached). Computational sub-graphs halted gracefully.]"
+            exec_summary += trunc_notice
+            report_sections["budget_truncation_warning"] = (
+                "API spend reached $1.50 budget cap. Computational sub-graphs halted gracefully."
+            )
+
         from backend.reports.pptx_templates import PPTXTemplateManager
 
         deck_path = PPTXTemplateManager.create_corporate_pitchbook(
@@ -100,6 +111,7 @@ async def report_node(state: AgentState) -> Dict[str, Any]:
 
         ai_msg = AIMessage(
             content=f"[Report Agent] Successfully finalized comprehensive due diligence report for {company_name} ({ticker}) with {len(citations)} auditable source citations and PPTX Pitchbook ({deck_path})."
+            + (" (Truncated under API Budget Cap)" if is_budget_truncated else "")
         )
 
         return {"report_sections": report_sections, "messages": [ai_msg]}

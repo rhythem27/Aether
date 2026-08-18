@@ -766,15 +766,24 @@ class FinancialGraphRAG:
         if not seeds and query.strip():
             seeds = [query.strip()]
 
-        # 2. Subgraph Expansion (1-2 hops in Neo4j)
-        expanded_entity_ids = await expand_subgraph_entity_ids(
-            driver=self.driver, seed_entity_ids=seeds, max_hops=2
-        )
-
-        # 3. Retrieve graph neighborhood nodes & edges
-        graph_context = await traverse_2hop_graph(
-            self.driver, entity_name=seeds[0] if seeds else None, limit=top_k * 5
-        )
+        # 2. Subgraph Expansion & Traversal with Automatic Outage Fallback
+        expanded_entity_ids = []
+        graph_context = {"nodes": [], "links": []}
+        try:
+            expanded_entity_ids = await expand_subgraph_entity_ids(
+                driver=self.driver, seed_entity_ids=seeds, max_hops=2
+            )
+            graph_context = await traverse_2hop_graph(
+                self.driver, entity_name=seeds[0] if seeds else None, limit=top_k * 5
+            )
+        except Exception as err:
+            logger.warning(
+                "neo4j_outage_detected_falling_back_to_qdrant",
+                error=str(err),
+                query=query,
+            )
+            from backend.core.metrics import DEGRADATION_EVENTS_COUNT
+            DEGRADATION_EVENTS_COUNT.labels(source="neo4j_outage", target="qdrant_fallback").inc()
 
         # 4. Dense Vector Search in Qdrant with strict expanded entity payload filters
         vector_passages = []
