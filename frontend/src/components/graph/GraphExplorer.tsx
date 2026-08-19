@@ -30,8 +30,8 @@ export const GraphExplorer: React.FC = () => {
   };
 
   const filteredNodes = graphData?.nodes.filter((node) => {
-    if (selectedCategory !== 'ALL' && node.type !== selectedCategory) return false;
-    if (searchTerm && !node.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    const nodeType = (node.type || (node as any).label || 'Company').toString();
+    if (selectedCategory !== 'ALL' && nodeType !== selectedCategory) return false;
     return true;
   }) || [];
 
@@ -90,25 +90,44 @@ export const GraphExplorer: React.FC = () => {
             <span className="font-mono text-neutral-500 text-[11px]">2-Hop Traversal</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3 bg-black p-3 rounded-lg border border-neutral-800 min-h-[300px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 py-3 bg-black p-3 rounded-lg border border-neutral-800">
             {filteredNodes.map((node) => {
+              const nodeType = (node.type || (node as any).label || 'Company').toString();
               const isSelected = selectedNode?.id === node.id;
+
+              let badgeStyle = 'bg-neutral-800 text-neutral-300 border-neutral-700';
+              if (nodeType === 'Company') badgeStyle = 'bg-blue-950/80 text-blue-400 border-blue-800/60';
+              else if (nodeType === 'Disclosure') badgeStyle = 'bg-purple-950/80 text-purple-400 border-purple-800/60';
+              else if (nodeType === 'Metric') badgeStyle = 'bg-emerald-950/80 text-emerald-400 border-emerald-800/60';
+              else if (nodeType === 'RiskFactor') badgeStyle = 'bg-amber-950/80 text-amber-400 border-amber-800/60';
+              else if (nodeType === 'Executive') badgeStyle = 'bg-cyan-950/80 text-cyan-400 border-cyan-800/60';
+
               return (
                 <button
                   key={node.id}
                   onClick={() => setSelectedNode(node)}
-                  className={`p-3 rounded border text-left flex flex-col justify-between transition-colors ${
+                  className={`p-3.5 rounded-lg border text-left flex flex-col justify-between gap-2.5 transition-all ${
                     isSelected
-                      ? 'bg-neutral-900 border-neutral-600 text-white'
-                      : 'bg-neutral-950 border-neutral-850 text-neutral-400 hover:border-neutral-800'
+                      ? 'bg-neutral-900 border-neutral-500 ring-1 ring-neutral-500 text-white shadow-lg'
+                      : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:bg-neutral-900/50'
                   }`}
                 >
-                  <span className="text-[10px] font-mono text-neutral-500 uppercase block mb-1">
-                    {node.type}
-                  </span>
-                  <span className="text-xs font-medium text-white truncate block">
-                    {node.name}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded border uppercase font-medium ${badgeStyle}`}>
+                      {nodeType}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-semibold text-white block leading-snug">
+                      {node.name}
+                    </span>
+                    {Object.keys(node.properties || {}).length > 0 && (
+                      <span className="text-[10px] font-mono text-neutral-500 mt-1 block truncate">
+                        {Object.entries(node.properties)[0][0]}: {String(Object.entries(node.properties)[0][1])}
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}
@@ -127,7 +146,7 @@ export const GraphExplorer: React.FC = () => {
               <div className="p-3 bg-black rounded border border-neutral-800 space-y-1">
                 <span className="text-neutral-500 text-[10px] uppercase font-mono">Entity</span>
                 <div className="text-sm font-semibold text-white">{selectedNode.name}</div>
-                <div className="text-neutral-400 text-[11px]">Type: {selectedNode.type}</div>
+                <div className="text-neutral-400 text-[11px]">Type: {selectedNode.type || (selectedNode as any).label || 'Company'}</div>
               </div>
 
               <div>
